@@ -1,0 +1,829 @@
+/* ==========================================================================
+   FORGE - picker.css
+   Exercise picker (.picker), exercise info sheet (.ex-info) and the custom
+   exercise form (.ex-form). The class sits on the F.ui.sheet root, so every
+   rule here is scoped under one of those three classes. Tokens only.
+   ========================================================================== */
+
+/* ============================== Picker sheet ============================== */
+
+/* The picker manages its own padding so the filter bar can stick edge to edge. */
+.picker .sheet__body {
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+  gap: 0;
+}
+.picker .picker__root {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---- sticky filter bar ---- */
+.picker .picker__bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-5) var(--sp-2);
+  background: var(--surface);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-1) ease, box-shadow var(--dur-2) ease;
+}
+.picker .picker__bar.is-stuck {
+  border-bottom-color: var(--line);
+  box-shadow: 0 12px 18px -16px var(--lo);
+}
+
+.picker .picker__search { position: relative; display: flex; align-items: center; min-width: 0; }
+.picker .picker__search-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.picker .picker__search-input {
+  padding-left: 44px;
+  padding-right: 44px;
+  border-radius: var(--r-md);
+}
+.picker .picker__search-input::-webkit-search-cancel-button,
+.picker .picker__search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.picker .picker__search-clear {
+  position: absolute;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  animation: fg-pop 260ms var(--ease-spring) backwards;
+}
+.picker .picker__search-clear:active { color: var(--fg); background: var(--surface-3); }
+
+/* chip rows scroll edge to edge */
+.picker .picker__chips {
+  margin-inline: calc(var(--sp-5) * -1);
+  padding-inline: var(--sp-5);
+  scroll-padding-inline: var(--sp-5);
+}
+.picker .picker__chips .chip { min-height: 36px; padding: 0 12px; }
+.picker .picker__sep {
+  flex: none;
+  align-self: center;
+  width: 1px;
+  height: 22px;
+  background: var(--line-strong);
+}
+
+.picker .picker__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.picker .picker__count {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: .3em;
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.picker .picker__nowrap { white-space: nowrap; }
+.picker .picker__mine { flex: none; min-height: 44px; gap: var(--sp-2); }
+.picker .picker__mine .switch__label {
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--fg-2);
+}
+
+/* ---- list ---- */
+.picker .picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-5) var(--sp-2);
+}
+.picker .picker__list.is-filtering { animation: fg-fade 200ms ease-out; }
+
+.picker .picker__create {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  text-align: left;
+  color: var(--fg);
+  transition: border-color var(--dur-1) ease, background-color var(--dur-1) ease, transform var(--dur-1) var(--ease-out);
+}
+.picker .picker__create:active { transform: scale(.985); border-color: var(--accent); background: var(--accent-soft); }
+.picker .picker__create-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.picker .picker__group { display: flex; flex-direction: column; min-width: 0; }
+.picker .picker__group-head {
+  position: sticky;
+  top: var(--picker-bar-h, 0px);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 2px;
+  background: var(--surface);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.picker .picker__group-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.picker .picker__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.picker .picker__row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  transition: background-color var(--dur-2) ease;
+}
+.picker .picker__row + .picker__row { border-top: 1px solid var(--line); }
+.picker .picker__row::before { /* plate rim that slides in when selected */
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--plate, var(--accent));
+  transform: scaleY(0);
+  transition: transform var(--dur-2) var(--ease-spring);
+}
+.picker .picker__row.is-selected { background: color-mix(in srgb, var(--plate, var(--accent)) 10%, var(--surface)); }
+.picker .picker__row.is-selected::before { transform: scaleY(1); }
+
+.picker .picker__pick {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  min-height: 64px;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4);
+  text-align: left;
+  color: inherit;
+  touch-action: manipulation;
+  transition: background-color var(--dur-1) ease;
+}
+.picker .picker__pick:active { background: var(--surface-3); }
+.picker .picker__pick:focus-visible, .picker .picker__info:focus-visible { outline-offset: -3px; }
+
+.picker .picker__main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.picker .picker__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px var(--sp-2);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.picker .picker__custom { height: 18px; padding: 0 6px; font-size: 10px; }
+.picker .picker__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  row-gap: 2px;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.picker .picker__sets { white-space: nowrap; }
+.picker .picker__eq {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  color: var(--fg-2);
+}
+.picker .picker__eq-ico { display: inline-flex; }
+.picker .picker__eq-ico.is-missing { color: var(--faint); opacity: .55; }
+
+.picker .picker__check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  color: transparent;
+  transition: background-color var(--dur-1) ease, border-color var(--dur-1) ease, color var(--dur-1) ease;
+}
+.picker .picker__check .icon { stroke-width: 3; }
+.picker .picker__row.is-selected .picker__check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.picker .picker__check.is-popping { animation: fg-pop 380ms var(--ease-spring); }
+.picker .picker__go { flex: none; display: inline-flex; color: var(--faint); }
+
+.picker .picker__info {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  color: var(--muted);
+  transition: color var(--dur-1) ease, background-color var(--dur-1) ease;
+}
+.picker .picker__info:active { color: var(--fg); background: var(--surface-3); }
+
+/* entrance: rows fade up in a quick cascade on open */
+.picker .picker__list.is-entering .picker__row {
+  animation: fg-fade-up 300ms var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 14) * 28ms + 60ms);
+}
+/* a freshly created custom exercise flashes once */
+.picker .picker__row.is-new { animation: fg-picker-flash 1400ms ease-out; }
+@keyframes fg-picker-flash {
+  0%, 35% { background-color: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+}
+
+.picker .picker__note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.picker .picker__note .btn { flex: none; }
+
+/* footer button: a little bump when the count changes */
+.picker .sheet__foot .btn.is-bump { animation: fg-picker-bump 260ms var(--ease-spring); }
+.picker .sheet__foot .btn.shake { animation: fg-shake 380ms var(--ease-out); }
+@keyframes fg-picker-bump { 45% { transform: scale(1.04); } }
+
+@media (hover: hover) {
+  .picker .picker__search-clear:hover { color: var(--fg); background: var(--surface-3); }
+  .picker .picker__create:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .picker .picker__pick:hover { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+  .picker .picker__info:hover { color: var(--fg); background: var(--surface-2); }
+}
+
+@media (min-width: 720px) {
+  .picker .picker__bar { padding-top: var(--sp-3); }
+}
+
+/* ============================== Exercise info ============================== */
+
+.ex-info .ex-info__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+.ex-info .ex-info__section { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+
+.ex-info .ex-info__muscles { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ex-info .ex-info__muscle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--plate, var(--accent)) 40%, var(--line));
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--plate, var(--accent)) 10%, var(--surface));
+  color: var(--fg);
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  animation: fg-pop 360ms var(--ease-spring) backwards;
+}
+.ex-info .ex-info__muscle.is-primary {
+  border-color: var(--plate, var(--accent));
+  background: color-mix(in srgb, var(--plate, var(--accent)) 22%, var(--surface));
+}
+.ex-info .ex-info__muscle .plate-dot { width: 10px; height: 10px; }
+.ex-info .ex-info__main {
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  background: var(--plate, var(--accent));
+  color: var(--plate-ink, var(--bg));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.ex-info .ex-info__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.ex-info .ex-info__stats .stat { animation: fg-fade-up 320ms var(--ease-out) backwards; }
+.ex-info .ex-info__stats .stat + .stat { animation-delay: 60ms; }
+.ex-info .ex-info__stats .stat__value { font-size: var(--fs-2xl); }
+
+.ex-info .ex-info__facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.ex-info .ex-info__fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 52px;
+  padding: var(--sp-2) var(--sp-4);
+}
+.ex-info .ex-info__fact + .ex-info__fact { border-top: 1px solid var(--line); }
+.ex-info .ex-info__fact dt {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.ex-info .ex-info__fact dd {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ex-info .ex-info__level { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.ex-info .ex-info__bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 14px; }
+.ex-info .ex-info__bars i {
+  display: block;
+  width: 5px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+.ex-info .ex-info__bars i:nth-child(1) { height: 6px; }
+.ex-info .ex-info__bars i:nth-child(2) { height: 10px; }
+.ex-info .ex-info__bars i:nth-child(3) { height: 14px; }
+.ex-info .ex-info__level[data-level="1"] .ex-info__bars i:nth-child(-n+1),
+.ex-info .ex-info__level[data-level="2"] .ex-info__bars i:nth-child(-n+2),
+.ex-info .ex-info__level[data-level="3"] .ex-info__bars i:nth-child(-n+3) { background: var(--plate, var(--accent)); }
+
+.ex-info .ex-info__equip { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px var(--sp-3); }
+.ex-info .ex-info__eq { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ex-info .ex-info__eq .icon { color: var(--fg-2); }
+.ex-info .ex-info__eq.is-missing { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+
+.ex-info .ex-info__cues {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ex-info .ex-info__cues li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  color: var(--fg-2);
+  line-height: 1.45;
+  animation: fg-fade-up 320ms var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms + 120ms);
+}
+.ex-info .ex-info__cue-n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--plate, var(--accent));
+  color: var(--plate-ink, var(--bg));
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--plate, var(--accent)) 60%, var(--lo));
+}
+.ex-info .ex-info__empty { color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
+.ex-info .ex-info__extra { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+
+/* ============================== Custom exercise form ============================== */
+
+.ex-form .ex-form__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+.ex-form .ex-form__group { gap: var(--sp-2); }
+.ex-form .ex-form__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.ex-form .ex-form__count {
+  color: var(--faint);
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.ex-form .ex-form__error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  animation: fg-fade-up 200ms var(--ease-out) backwards;
+}
+.ex-form .ex-form__error[hidden] { display: none; }
+.ex-form .ex-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.ex-form .ex-form__presets .chip { min-height: 36px; }
+.ex-form .ex-form__cues { min-height: 112px; }
+.ex-form .seg__label { white-space: nowrap; }
+.ex-form .ex-form__delete { margin-top: var(--sp-2); }
+
+/* ============================== Swap sheet ============================== */
+/* F.picker.swap: current exercise, calisthenics variations, dumbbell & bench, browse. */
+
+.ex-swap .ex-swap__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+/* ---- the exercise being swapped out ---- */
+.ex-swap .ex-swap__current {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4);
+  border: 1px solid color-mix(in srgb, var(--plate, var(--accent)) 45%, var(--line));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--plate, var(--accent)) 10%, var(--surface));
+  overflow: hidden;
+  animation: fg-fade-up 280ms var(--ease-out) backwards;
+}
+.ex-swap .ex-swap__current::before { /* plate stripe */
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--plate, var(--accent));
+}
+.ex-swap .ex-swap__disc { /* a tiny bumper plate carrying the tracking icon */
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--plate, var(--accent));
+  color: var(--plate-ink, var(--accent-fg));
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--plate, var(--accent)) 60%, var(--lo)), 0 0 0 4px color-mix(in srgb, var(--plate, var(--accent)) 18%, transparent);
+  animation: fg-pop 420ms var(--ease-spring) 80ms backwards;
+}
+.ex-swap .ex-swap__eyebrow {
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.ex-swap .ex-swap__current-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: .01em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* ---- section heads ---- */
+.ex-swap .ex-swap__section { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.ex-swap .ex-swap__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.ex-swap .ex-swap__head-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--fg-2);
+}
+.ex-swap .ex-swap__section[data-kind="cali"] .ex-swap__head-ico {
+  background: var(--accent-soft);
+  color: var(--accent-ink, var(--accent));
+}
+.ex-swap .ex-swap__count {
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- rows ---- */
+.ex-swap .ex-swap__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.ex-swap .ex-swap__row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  transition: background-color var(--dur-2) ease;
+  animation: fg-fade-up 300ms var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 14) * 32ms + 90ms);
+}
+.ex-swap .ex-swap__row + .ex-swap__row { border-top: 1px solid var(--line); }
+.ex-swap .ex-swap__row::before { /* plate rim that slams in on pick */
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--plate, var(--accent));
+  transform: scaleY(0);
+  transition: transform var(--dur-2) var(--ease-spring);
+}
+.ex-swap .ex-swap__row.is-picked { background: color-mix(in srgb, var(--plate, var(--accent)) 16%, var(--surface)); }
+.ex-swap .ex-swap__row.is-picked::before { transform: scaleY(1); }
+.ex-swap .ex-swap__row.is-picked .ex-swap__go { color: var(--plate, var(--accent)); animation: fg-pop 320ms var(--ease-spring); }
+
+.ex-swap .ex-swap__pick {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  min-height: 62px;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4);
+  text-align: left;
+  color: inherit;
+  touch-action: manipulation;
+  transition: background-color var(--dur-1) ease;
+}
+.ex-swap .ex-swap__pick:active { background: var(--surface-3); }
+.ex-swap .ex-swap__pick:focus-visible,
+.ex-swap .ex-swap__info:focus-visible,
+.ex-swap .ex-swap__browse:focus-visible { outline-offset: -3px; }
+
+.ex-swap .ex-swap__main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.ex-swap .ex-swap__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px var(--sp-2);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.ex-swap .ex-swap__custom { height: 18px; padding: 0 6px; font-size: 10px; }
+.ex-swap .ex-swap__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--font-label);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.ex-swap .ex-swap__level,
+.ex-swap .ex-swap__type,
+.ex-swap .ex-swap__eq { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ex-swap .ex-swap__type .icon,
+.ex-swap .ex-swap__eq { color: var(--fg-2); }
+.ex-swap .ex-swap__eq { gap: 4px; }
+.ex-swap .picker__eq-ico { display: inline-flex; }
+.ex-swap .picker__eq-ico.is-missing { color: var(--faint); opacity: .55; }
+
+.ex-swap .ex-swap__bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+.ex-swap .ex-swap__bars i {
+  display: block;
+  width: 4px;
+  border-radius: 1px;
+  background: var(--surface-3);
+}
+.ex-swap .ex-swap__bars i:nth-child(1) { height: 5px; }
+.ex-swap .ex-swap__bars i:nth-child(2) { height: 8px; }
+.ex-swap .ex-swap__bars i:nth-child(3) { height: 11px; }
+.ex-swap [data-level="1"] .ex-swap__bars i:nth-child(-n+1),
+.ex-swap [data-level="2"] .ex-swap__bars i:nth-child(-n+2),
+.ex-swap [data-level="3"] .ex-swap__bars i:nth-child(-n+3) { background: var(--plate, var(--accent)); }
+
+.ex-swap .ex-swap__go {
+  flex: none;
+  display: inline-flex;
+  color: var(--faint);
+  transition: color var(--dur-1) ease, transform var(--dur-2) var(--ease-out);
+}
+.ex-swap .ex-swap__info {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  color: var(--muted);
+  transition: color var(--dur-1) ease, background-color var(--dur-1) ease;
+}
+.ex-swap .ex-swap__info:active { color: var(--fg); background: var(--surface-3); }
+.ex-swap .ex-swap__current .ex-swap__info {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+}
+
+.ex-swap .ex-swap__none {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+/* ---- browse the whole library ---- */
+.ex-swap .ex-swap__browse {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  text-align: left;
+  color: var(--fg);
+  animation: fg-fade-up 300ms var(--ease-out) 200ms backwards;
+  transition: border-color var(--dur-1) ease, background-color var(--dur-1) ease, transform var(--dur-1) var(--ease-out);
+}
+.ex-swap .ex-swap__browse:active { transform: scale(.985); border-color: var(--accent); background: var(--accent-soft); }
+.ex-swap .ex-swap__browse-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--fg-2);
+}
+
+@media (hover: hover) {
+  .ex-swap .ex-swap__pick:hover { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+  .ex-swap .ex-swap__pick:hover .ex-swap__go { color: var(--plate, var(--accent)); transform: rotate(180deg); }
+  .ex-swap .ex-swap__info:hover { color: var(--fg); background: var(--surface-2); }
+  .ex-swap .ex-swap__browse:hover { border-color: var(--accent); background: var(--accent-soft); }
+}
+
+/* ============================== Reduced motion ============================== */
+@media (prefers-reduced-motion: reduce) {
+  .picker .picker__search-clear,
+  .picker .picker__list,
+  .picker .picker__list .picker__row,
+  .picker .picker__check,
+  .picker .sheet__foot .btn,
+  .ex-info .ex-info__muscle,
+  .ex-info .ex-info__stats .stat,
+  .ex-info .ex-info__cues li,
+  .ex-form .ex-form__error,
+  .ex-swap .ex-swap__current,
+  .ex-swap .ex-swap__disc,
+  .ex-swap .ex-swap__row,
+  .ex-swap .ex-swap__go,
+  .ex-swap .ex-swap__browse { animation: none !important; }
+  .picker .picker__row,
+  .picker .picker__row::before,
+  .picker .picker__check,
+  .picker .picker__bar,
+  .picker .picker__create,
+  .ex-swap .ex-swap__row,
+  .ex-swap .ex-swap__row::before,
+  .ex-swap .ex-swap__go,
+  .ex-swap .ex-swap__browse { transition: none !important; }
+}

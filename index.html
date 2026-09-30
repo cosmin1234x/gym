@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FORGE</title>
+  <meta name="description" content="FORGE is a mobile-first workout planner and tracker for training at home with a pull-up bar, dumbbells and a bench: weekly split, live workout logging with a rest timer, PRs and progress charts, a water tracker and a training journal. Works offline.">
+  <meta name="theme-color" id="theme-color" content="#121110">
+  <meta name="color-scheme" content="dark light">
+  <meta name="application-name" content="FORGE">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FORGE">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Big+Shoulders+Stencil+Display:wght@800&family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
+
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/picker.css">
+  <link rel="stylesheet" href="css/views/today.css">
+  <link rel="stylesheet" href="css/views/plan.css">
+  <link rel="stylesheet" href="css/views/workout.css">
+  <link rel="stylesheet" href="css/views/library.css">
+  <link rel="stylesheet" href="css/views/progress.css">
+  <link rel="stylesheet" href="css/views/water.css">
+  <link rel="stylesheet" href="css/views/journal.css">
+  <link rel="stylesheet" href="css/views/settings.css">
+
+  <script>
+    /* Boot guard: if the app scripts fail to load or boot, show a readable message instead of a
+       blank page. Runs after DOMContentLoaded, i.e. after every deferred script (and F.app.boot). */
+    (function () {
+      'use strict';
+      // Apply a forced theme (Settings → Iron / Chalk) before first paint, so there is no flash when
+      // it differs from the OS setting. app.js takes over from here (see applyTheme).
+      try {
+        var saved = JSON.parse(window.localStorage.getItem('forge:v1') || 'null');
+        var theme = saved && saved.settings && saved.settings.theme;
+        var root = document.documentElement;
+        if ((theme === 'dark' || theme === 'light') && !root.hasAttribute('data-theme')) {
+          root.setAttribute('data-theme', theme);
+          root.setAttribute('data-forge-theme', '');
+        }
+      } catch (e) { /* storage unavailable: app.js applies the theme at boot */ }
+
+      function fallback() {
+        var F = window.Forge;
+        if (F && F.app && F.app.booted) return;
+        var host = document.getElementById('view') || document.body;
+        if (!host || host.querySelector('.boot-error')) return;
+        var box = document.createElement('div');
+        box.className = 'boot-error';
+        box.setAttribute('role', 'alert');
+        var title = document.createElement('h2');
+        title.textContent = 'FORGE couldn’t start';
+        var text = document.createElement('p');
+        text.textContent = 'Part of the app failed to load. Check your connection and reload the page. ' +
+          'Your saved workouts, water and journal stay in this browser’s storage.';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn--primary';
+        btn.textContent = 'Reload';
+        btn.addEventListener('click', function () { location.reload(); });
+        box.appendChild(title);
+        box.appendChild(text);
+        box.appendChild(btn);
+        host.textContent = '';
+        host.appendChild(box);
+      }
+      document.addEventListener('DOMContentLoaded', function () { setTimeout(fallback, 0); });
+    })();
+  </script>
+
+  <script defer src="js/core/util.js"></script>
+  <script defer src="js/core/icons.js"></script>
+  <script defer src="js/data/exercises.js"></script>
+  <script defer src="js/data/program.js"></script>
+  <script defer src="js/core/store.js"></script>
+  <script defer src="js/core/queries.js"></script>
+  <script defer src="js/core/persist.js"></script>
+  <script defer src="js/core/ui.js"></script>
+  <script defer src="js/core/charts.js"></script>
+  <script defer src="js/core/picker.js"></script>
+  <script defer src="js/core/router.js"></script>
+  <script defer src="js/views/today.js"></script>
+  <script defer src="js/views/plan.js"></script>
+  <script defer src="js/views/workout.js"></script>
+  <script defer src="js/views/library.js"></script>
+  <script defer src="js/views/progress.js"></script>
+  <script defer src="js/views/water.js"></script>
+  <script defer src="js/views/journal.js"></script>
+  <script defer src="js/views/settings.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand sidebar__brand" href="#today" data-home aria-label="FORGE, go to Today">
+        <span class="brand__mark" aria-hidden="true"></span>
+        <span class="brand__word">FORGE</span>
+      </a>
+      <nav class="side-nav" id="side-nav" aria-label="Main"></nav>
+      <p class="sidebar__foot" id="sidebar-foot">Stick to the plan.</p>
+    </aside>
+
+    <header class="topbar" id="topbar">
+      <a class="brand topbar__brand" href="#today" data-home aria-label="FORGE, go to Today">
+        <span class="brand__word">FORGE</span>
+      </a>
+      <h1 class="topbar__title" id="topbar-title"></h1>
+      <div class="topbar__actions">
+        <button type="button" class="sync-dot" id="sync-dot" data-status="local" title="Saved on this device" aria-label="Sync status: Saved on this device">
+          <span class="sync-dot__led" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="topbar__btn water-btn" id="water-btn" data-nav="water" title="Water" aria-label="Water tracker" style="--water-pct: 0">
+          <svg class="water-btn__svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+            <defs>
+              <clipPath id="water-btn-clip">
+                <path d="M12 3.2c3.4 4.1 6.2 7.4 6.2 11a6.2 6.2 0 0 1-12.4 0c0-3.6 2.8-6.9 6.2-11z"/>
+              </clipPath>
+            </defs>
+            <g clip-path="url(#water-btn-clip)">
+              <rect class="water-btn__level" x="5" y="3" width="14" height="18"/>
+            </g>
+            <path class="water-btn__outline" d="M12 3.2c3.4 4.1 6.2 7.4 6.2 11a6.2 6.2 0 0 1-12.4 0c0-3.6 2.8-6.9 6.2-11z"/>
+          </svg>
+        </button>
+        <button type="button" class="topbar__btn settings-btn" id="settings-btn" data-nav="settings" title="Settings" aria-label="Settings"></button>
+      </div>
+    </header>
+
+    <main class="main" id="main">
+      <div class="view-host" id="view">
+        <noscript>
+          <div class="noscript">
+            <h2>FORGE needs JavaScript</h2>
+            <p>This workout planner runs entirely in your browser. Please enable JavaScript, then reload the page.</p>
+          </div>
+        </noscript>
+      </div>
+    </main>
+
+    <div class="rest-dock" id="rest-dock"></div>
+
+    <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+
+    <div id="overlay-root"></div>
+    <div class="toast-stack" id="toast-root" aria-live="polite"></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Static site: serve the app files only (no build step).
+package.json
+tests/
+tools/
+docs/
+dist/

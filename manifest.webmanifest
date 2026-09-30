@@ -1,0 +1,22 @@
+{
+  "name": "FORGE — Workout Planner",
+  "short_name": "FORGE",
+  "description": "Plan your split, log every set with a rest timer, track PRs, water and your training journal. Works offline.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121110",
+  "theme_color": "#121110",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Start workout", "short_name": "Train", "url": "./index.html#workout", "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Log water", "short_name": "Water", "url": "./index.html#water", "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Journal", "short_name": "Journal", "url": "./index.html#journal", "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+  ]
+}

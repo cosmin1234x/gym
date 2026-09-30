@@ -1,0 +1,10 @@
+{
+  "name": "forge-gym",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node --test tests/",
+    "build": "node tools/build-artifact.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}

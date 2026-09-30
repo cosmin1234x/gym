@@ -1,0 +1,234 @@
+/* ==========================================================================
+   FORGE design tokens — "Iron & Chalk"
+   Dark-first: every token is defined on bare :root with the IRON (dark)
+   values; the CHALK (light) theme only redefines them. Components must use
+   these tokens (color-mix() on tokens is fine), never literal colours.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* --- Surfaces: warm rubber-floor black → charcoal steel ------------------ */
+  --bg: #121110;
+  --bg-2: #171614;
+  --surface: #1c1a18;
+  --surface-2: #262421;
+  --surface-3: #322f2b;
+  --line: #2d2a27;
+  --line-strong: #423e39;
+
+  /* --- Ink: chalk ------------------------------------------------------------ */
+  --fg: #f3efe7;
+  --fg-2: #cdc6ba;
+  --muted: #a39b90;
+  --faint: #8a8278;
+
+  /* --- Accent = 25 kg plate red --------------------------------------------- */
+  --accent: #d6322a;
+  --accent-2: #b8231b;
+  --accent-fg: #fffaf6;
+  --accent-soft: color-mix(in srgb, var(--accent) 17%, transparent);
+  /* extra (non-contract): accent that passes AA as small text on bg/surfaces */
+  --accent-ink: #ff6b5e;
+
+  /* --- Semantic states -------------------------------------------------------- */
+  --ok: #45c77f;
+  --warn: #f2b53f;
+  --danger: #ff6166;
+
+  /* --- Water ------------------------------------------------------------------ */
+  --water: #52b6ff;
+  --water-2: #2289e6;
+  --water-soft: color-mix(in srgb, var(--water) 16%, transparent);
+
+  /* --- Olympic bumper plates ---------------------------------------------------- */
+  --plate-red: #d6322a;
+  --plate-blue: #3d86f2;
+  --plate-yellow: #f4c233;
+  --plate-green: #34b36b;
+  --plate-white: #ece7de;
+  --plate-orange: #f38a36;
+  --plate-violet: #a07cf5;
+  --plate-teal: #2bbfb3;
+
+  /* muscle colours (aliases of plates) */
+  --m-chest: var(--plate-red);
+  --m-back: var(--plate-blue);
+  --m-biceps: var(--plate-yellow);
+  --m-triceps: var(--plate-green);
+  --m-shoulders: var(--plate-orange);
+  --m-legs: var(--plate-violet);
+  --m-forearms: var(--plate-teal);
+  --m-core: var(--plate-white);
+  --m-fullbody: var(--plate-white);
+
+  /* --- Elevation ------------------------------------------------------------------ */
+  --shadow-1: 0 1px 0 rgba(255, 244, 230, .035) inset, 0 1px 2px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .22);
+  --shadow-2: 0 22px 48px -16px rgba(0, 0, 0, .75), 0 6px 16px rgba(0, 0, 0, .38);
+  --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent), 0 10px 32px -6px color-mix(in srgb, var(--accent) 60%, transparent);
+
+  /* extra (non-contract): light/shade washes for bevels, scrim, textures */
+  --hi: rgba(255, 246, 236, .16);
+  --lo: rgba(0, 0, 0, .34);
+  --scrim: rgba(8, 6, 5, .64);
+  --seg-ink: var(--surface-3);
+  --on-plate: var(--bg);           /* text on bright plate fills */
+  --knurl: rgba(255, 246, 236, .045);
+  --noise-opacity: .07;
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* mostly-opaque speckled mask: gives stamps a rubber-ink look */
+  --stamp-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.6 2.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+
+  /* --- Radii --------------------------------------------------------------------- */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* --- Type ------------------------------------------------------------------------ */
+  --font-display: "Big Shoulders Display", "Oswald", "Arial Narrow", Impact, system-ui, sans-serif;
+  --font-stencil: "Big Shoulders Stencil Display", "Big Shoulders Display", "Oswald", "Arial Narrow", Impact, system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-label: "Barlow Semi Condensed", "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: clamp(20px, 5.4vw, 22px);
+  --fs-2xl: clamp(24px, 6.6vw, 28px);
+  --fs-3xl: clamp(32px, 9vw, 40px);
+  --fs-4xl: clamp(44px, 13vw, 56px);
+
+  /* --- Spacing ---------------------------------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 48px;
+
+  /* --- Motion -------------------------------------------------------------------------- */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --dur-1: 140ms;
+  --dur-2: 240ms;
+  --dur-3: 420ms;
+
+  /* --- Layout ---------------------------------------------------------------------------- */
+  --topbar-h: 56px;
+  --tabbar-h: 68px;
+  --sidebar-w: 248px;
+  --content-max: 760px;
+  --gutter: 16px;
+
+  /* extra (non-contract): overlay stacking */
+  --z-sheet: 400;
+  --z-toast: 500;
+  --z-celebrate: 600;
+}
+
+/* Plate helper: any element with data-plate gets --plate (components read
+   var(--plate, var(--accent))). --plate-ink = readable text on a solid plate fill. */
+[data-plate="red"]    { --plate: var(--plate-red);    --plate-ink: var(--accent-fg); }
+[data-plate="blue"]   { --plate: var(--plate-blue);   --plate-ink: var(--accent-fg); }
+[data-plate="yellow"] { --plate: var(--plate-yellow); --plate-ink: var(--on-plate); }
+[data-plate="green"]  { --plate: var(--plate-green);  --plate-ink: var(--on-plate); }
+[data-plate="white"]  { --plate: var(--plate-white);  --plate-ink: var(--on-plate); }
+[data-plate="orange"] { --plate: var(--plate-orange); --plate-ink: var(--on-plate); }
+[data-plate="violet"] { --plate: var(--plate-violet); --plate-ink: var(--on-plate); }
+[data-plate="teal"]   { --plate: var(--plate-teal);   --plate-ink: var(--on-plate); }
+
+/* ---- CHALK (light) — automatic ------------------------------------------------------------ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #efebe4;
+    --bg-2: #e7e2d9;
+    --surface: #fbf9f5;
+    --surface-2: #f1ede6;
+    --surface-3: #e3ddd3;
+    --line: #dcd5ca;
+    --line-strong: #c2b9ab;
+    --fg: #191715;
+    --fg-2: #3d3833;
+    --muted: #5d564d;
+    --faint: #70685e;
+    --accent: #c42219;
+    --accent-2: #a91c14;
+    --accent-fg: #ffffff;
+    --accent-ink: #b51f17;
+    --ok: #12784a;
+    --warn: #8f5c00;
+    --danger: #b0202e;
+    --water: #0766b3;
+    --water-2: #054f8c;
+    --plate-red: #c42219;
+    --plate-blue: #1c5cc9;
+    --plate-yellow: #9c7000;
+    --plate-green: #11794a;
+    --plate-white: #57524b;
+    --plate-orange: #b04f0a;
+    --plate-violet: #6a44cc;
+    --plate-teal: #0b7470;
+    --shadow-1: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 1px 2px rgba(48, 36, 24, .09), 0 2px 6px rgba(48, 36, 24, .05);
+    --shadow-2: 0 22px 48px -18px rgba(48, 36, 24, .34), 0 6px 16px rgba(48, 36, 24, .1);
+    --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 10px 28px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+    --hi: rgba(255, 255, 255, .28);
+    --lo: rgba(40, 24, 12, .26);
+    --scrim: rgba(34, 27, 20, .42);
+    --seg-ink: var(--surface);
+    --on-plate: #ffffff;
+    --knurl: rgba(40, 30, 20, .05);
+    --noise-opacity: .06;
+    --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .15 0 0 0 0 .1 0 0 0 1.4 -.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* ---- CHALK (light) — forced by settings ------------------------------------------------------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #efebe4;
+  --bg-2: #e7e2d9;
+  --surface: #fbf9f5;
+  --surface-2: #f1ede6;
+  --surface-3: #e3ddd3;
+  --line: #dcd5ca;
+  --line-strong: #c2b9ab;
+  --fg: #191715;
+  --fg-2: #3d3833;
+  --muted: #5d564d;
+  --faint: #70685e;
+  --accent: #c42219;
+  --accent-2: #a91c14;
+  --accent-fg: #ffffff;
+  --accent-ink: #b51f17;
+  --ok: #12784a;
+  --warn: #8f5c00;
+  --danger: #b0202e;
+  --water: #0766b3;
+  --water-2: #054f8c;
+  --plate-red: #c42219;
+  --plate-blue: #1c5cc9;
+  --plate-yellow: #9c7000;
+  --plate-green: #11794a;
+  --plate-white: #57524b;
+  --plate-orange: #b04f0a;
+  --plate-violet: #6a44cc;
+  --plate-teal: #0b7470;
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 1px 2px rgba(48, 36, 24, .09), 0 2px 6px rgba(48, 36, 24, .05);
+  --shadow-2: 0 22px 48px -18px rgba(48, 36, 24, .34), 0 6px 16px rgba(48, 36, 24, .1);
+  --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 10px 28px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+  --hi: rgba(255, 255, 255, .28);
+  --lo: rgba(40, 24, 12, .26);
+  --scrim: rgba(34, 27, 20, .42);
+  --seg-ink: var(--surface);
+  --on-plate: #ffffff;
+  --knurl: rgba(40, 30, 20, .05);
+  --noise-opacity: .06;
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .15 0 0 0 0 .1 0 0 0 1.4 -.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
