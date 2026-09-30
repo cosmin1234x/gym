@@ -271,7 +271,7 @@ html.is-scroll-locked, html.is-scroll-locked body { overflow: hidden; }
   box-shadow: var(--shadow-2), var(--glow);
   cursor: pointer;
   transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
-  animation: fg-pop var(--dur-3) var(--ease-spring) both;
+  animation: fg-pop var(--dur-3) var(--ease-spring) backwards;
 }
 .fab:hover { transform: translateY(-2px); }
 .fab:active { transform: scale(.94); }

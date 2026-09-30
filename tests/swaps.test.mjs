@@ -393,15 +393,16 @@ test('q.alternatives: exact lists on the fixture (pattern, alts both ways, muscl
   deq(alt('db-curl'), { calisthenics: ['chin-up'], weights: [] });
   // …and on the candidate (reverse direction); same pattern v-pull too
   deq(alt('chin-up'), { calisthenics: ['pull-up'], weights: ['db-curl'] });
-  // alts rank before same-muscle matches; non-weight types go to the calisthenics list
-  deq(alt('db-wrist-curl'), { calisthenics: ['dead-hang', 'farmers-carry'], weights: [] });
-  deq(alt('dead-hang'), { calisthenics: ['farmers-carry'], weights: ['db-wrist-curl'] });
+  // alts rank before same-muscle matches; the calisthenics flag (not the type) picks the list,
+  // so a timed dumbbell carry is a dumbbell alternative
+  deq(alt('db-wrist-curl'), { calisthenics: ['dead-hang'], weights: ['farmers-carry'] });
+  deq(alt('dead-hang'), { calisthenics: [], weights: ['db-wrist-curl', 'farmers-carry'] });
   // v-push both ways
   deq(alt('pike-push-up'), { calisthenics: [], weights: ['db-shoulder-press', 'lateral-raise'] });
   // equipment I don't own drops out
   F.store.setSetting('equipment.pullupBar', false);
   deq(alt('db-curl'), { calisthenics: [], weights: [] });
-  deq(alt('db-wrist-curl').calisthenics, ['farmers-carry']);
+  deq(alt('db-wrist-curl'), { calisthenics: [], weights: ['farmers-carry'] });
   // unknown / bad ids
   for (const bad of ['nope', '', null, undefined, 5]) deq(F.q.alternatives(bad), { calisthenics: [], weights: [] });
 });
@@ -411,9 +412,9 @@ test('q.alternatives: custom exercises match by muscle only, both as base and as
   const mine = F.store.addCustomExercise({ name: 'Band Press', muscle: 'chest', type: 'weight', equipment: ['bodyweight'], level: 'beginner' });
   const r = F.q.alternatives(mine.id);
   deq(ids(r.calisthenics), ['push-up', 'decline-push-up', 'archer-push-up']);
-  deq(ids(r.weights), ['db-bench-press', 'db-fly', 'incline-db-press'], 'all tier 1 → level, then name');
+  deq(ids(r.weights), ['db-bench-press', 'incline-db-press', 'db-fly'], 'all tier 1 → level, then library order');
   // as a candidate it ranks with the same-muscle group, after same-pattern moves
-  deq(ids(F.q.alternatives('db-bench-press').weights), ['incline-db-press', mine.id, 'db-fly'], 'Band Press < Dumbbell Fly by name');
+  deq(ids(F.q.alternatives('db-bench-press').weights), ['incline-db-press', 'db-fly', mine.id], 'custom ranks after library moves of the same tier and level');
   // a custom exercise needing gear I don't own is excluded
   const gear = F.store.addCustomExercise({ name: 'Cable Fly', muscle: 'chest', equipment: ['cable'] });
   assert.ok(!ids(F.q.alternatives('db-bench-press').weights).includes(gear.id));
@@ -435,6 +436,7 @@ test('q.alternatives: invariants hold for every exercise in the loaded library',
   const { F } = fresh();
   const RANK = { beginner: 0, intermediate: 1, advanced: 2 };
   let withCalis = 0;
+  const libIdx = new Map(F.data.exercises.map((e, i) => [e.id, i]));
   for (const base of F.data.exercises) {
     const r = F.q.alternatives(base.id);
     assert.ok(Array.isArray(r.calisthenics) && Array.isArray(r.weights), base.id);
@@ -444,14 +446,15 @@ test('q.alternatives: invariants hold for every exercise in the loaded library',
       for (const ex of list) {
         assert.notEqual(ex.id, base.id, 'never itself');
         assert.ok(F.q.canDo(ex), ex.id + ' must be doable');
-        assert.equal(kind === 'calisthenics', !!(ex.calisthenics || ex.type !== 'weight'), ex.id + ' in the right list');
+        const cali = ex.custom ? !!(ex.calisthenics || ex.type !== 'weight') : !!ex.calisthenics;
+        assert.equal(kind === 'calisthenics', cali, ex.id + ' in the right list');
         const tier0 = (base.pattern && ex.pattern === base.pattern) || (base.alts || []).includes(ex.id) || (ex.alts || []).includes(base.id);
         assert.ok(tier0 || ex.muscle === base.muscle, ex.id + ' is related to ' + base.id);
-        key.push([tier0 ? 0 : 1, RANK[ex.level] ?? 1, ex.name]);
+        key.push([tier0 ? 0 : 1, RANK[ex.level] ?? 1, libIdx.get(ex.id) ?? 1e6]);
       }
       for (let i = 1; i < key.length; i++) {
         const [a, b] = [key[i - 1], key[i]];
-        assert.ok(a[0] < b[0] || (a[0] === b[0] && (a[1] < b[1] || (a[1] === b[1] && a[2].localeCompare(b[2]) <= 0))),
+        assert.ok(a[0] < b[0] || (a[0] === b[0] && (a[1] < b[1] || (a[1] === b[1] && a[2] <= b[2]))),
           base.id + ' ' + kind + ' sorted: ' + JSON.stringify(a) + ' then ' + JSON.stringify(b));
       }
       assert.equal(new Set(list.map((e) => e.id)).size, list.length, 'no duplicates');

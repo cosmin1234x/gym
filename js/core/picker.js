@@ -1006,6 +1006,7 @@
    */
   function swap(exId, opts) {
     const o = opts || {};
+    const browseMode = o.mode === 'browse'; // library "Variations": rows open instead of swapping
     const cur = getExercise(exId);
     const alt = alternativesFor(cur);
     const mLabel = muscleLabel(cur.muscle);
@@ -1037,7 +1038,7 @@
       const btn = h('button.btn.btn--primary.btn--lg.btn--block', {
         type: 'button',
         on: { click: () => { if (infoApi) infoApi.close('select'); choose(id, null); } }
-      }, icon('repeat'), 'Swap to this');
+      }, icon(browseMode ? 'chevron-right' : 'repeat'), browseMode ? 'Open' : 'Swap to this');
       infoApi = info(id, { extra: btn });
     }
 
@@ -1046,7 +1047,7 @@
     const current = h('div.ex-swap__current', { dataset: { plate: plateFor(cur.muscle) } },
       h('span.ex-swap__disc', { attrs: { 'aria-hidden': 'true' } }, icon(typeMeta(cur.type).icon || 'dumbbell', { size: 22 })),
       h('span.ex-swap__main', null,
-        h('span.ex-swap__eyebrow', null, 'Swapping out'),
+        h('span.ex-swap__eyebrow', null, browseMode ? 'Variations of' : 'Swapping out'),
         h('span.ex-swap__current-name', null, cur.name),
         h('span.ex-swap__sub', null,
           h('span', null, cur.missing ? 'No longer in your library' : mLabel + (curPat ? ' \u00b7 ' + curPat.label : '')),
@@ -1073,8 +1074,8 @@
           levelTag(ex, 'ex-swap__level'),
           typeTag(ex),
           equipIcons(ex, 'ex-swap__eq'))),
-      h('span.ex-swap__go', { attrs: { 'aria-hidden': 'true' } }, icon('repeat', { size: 18 })),
-      h('span.sr-only', null, '. Swap in'));
+      h('span.ex-swap__go', { attrs: { 'aria-hidden': 'true' } }, icon(browseMode ? 'chevron-right' : 'repeat', { size: 18 })),
+      h('span.sr-only', null, browseMode ? '. Open' : '. Swap in'));
       const infoBtn = h('button.ex-swap__info', {
         type: 'button',
         attrs: { 'aria-label': 'How to do ' + ex.name },

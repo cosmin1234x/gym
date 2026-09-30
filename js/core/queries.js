@@ -122,14 +122,16 @@
   /**
    * Swap candidates for exId (SPEC §6.4): exercises the user can do, other than exId, that share its
    * movement pattern or are linked through `alts` (either direction) — tier 0 — or share its primary
-   * muscle — tier 1. Split into calisthenics (calisthenics flag or non-weight type) and weights; each
-   * sorted tier → level (beginner→advanced) → name, max 8. Custom exercises have no pattern, so they
+   * muscle — tier 1. Split into calisthenics (the calisthenics flag; custom exercises: non-weight type)
+   * and weights; each sorted tier → level (beginner→advanced) → library order → name, max 8. Custom exercises have no pattern, so they
    * match by muscle only. Unknown exId → empty lists. Cached per store revision; arrays are copies.
    */
   function alternatives(exId) {
     const empty = { calisthenics: [], weights: [] };
     if (typeof exId !== 'string' || !exId) return empty;
     const lists = memo('alt:' + exId, () => {
+      const libIdx = new Map(((F.data && F.data.exercises) || []).map((e, i) => [e.id, i]));
+      const order = (ex) => (libIdx.has(ex.id) ? libIdx.get(ex.id) : 1e6);
       const base = exercise(exId);
       if (!base || base.missing) return empty;
       const pattern = typeof base.pattern === 'string' && base.pattern ? base.pattern : null;
@@ -140,11 +142,13 @@
           : (base.muscle && ex.muscle === base.muscle ? 1 : -1);
         if (tier >= 0) ranked.push({ ex, tier, level: Object.prototype.hasOwnProperty.call(LEVEL_RANK, ex.level) ? LEVEL_RANK[ex.level] : 1 });
       }
-      ranked.sort((a, b) => a.tier - b.tier || a.level - b.level ||
+      ranked.sort((a, b) => a.tier - b.tier || a.level - b.level || order(a.ex) - order(b.ex) ||
         String(a.ex.name || '').localeCompare(String(b.ex.name || '')) || (a.ex.id < b.ex.id ? -1 : 1));
       const out = { calisthenics: [], weights: [] };
       for (const r of ranked) {
-        const list = r.ex.calisthenics || r.ex.type !== 'weight' ? out.calisthenics : out.weights;
+        // Custom exercises have no calisthenics flag: treat non-weighted ones as calisthenics.
+        const cali = r.ex.custom ? (r.ex.calisthenics || r.ex.type !== 'weight') : !!r.ex.calisthenics;
+        const list = cali ? out.calisthenics : out.weights;
         if (list.length < ALT_MAX) list.push(r.ex);
       }
       return out;

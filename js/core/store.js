@@ -201,6 +201,8 @@
         rest: clampN(rest === null ? 90 : rest, 0, 1800)
       },
       cues: uniqStrings(raw.cues, 10, 160, false),
+      ...(typeof raw.pattern === 'string' && F.data && F.data.program && F.data.program.PATTERNS &&
+        Object.prototype.hasOwnProperty.call(F.data.program.PATTERNS, raw.pattern) ? { pattern: raw.pattern } : {}),
       custom: true
     };
   }
