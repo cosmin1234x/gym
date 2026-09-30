@@ -1,8 +1,11 @@
 /* FORGE - js/core/picker.js
  * F.picker (SPEC 6.3): the exercise picker sheet (search + sticky filters, multi or single select),
- * the exercise info sheet, and the create/edit form for custom exercises.
- * Built on F.ui.sheet + F.util.h; styles in css/picker.css (scoped under .picker / .ex-info / .ex-form).
+ * the exercise info sheet, the create/edit form for custom exercises, and the swap sheet
+ * (calisthenics variations + dumbbell & bench alternatives, SPEC 6.4).
+ * Built on F.ui.sheet + F.util.h; styles in css/picker.css (scoped under .picker / .ex-info / .ex-form / .ex-swap).
  * Load time: definitions only. All user text is rendered as text nodes.
+ * Muscles always come from F.data.program.MUSCLES (key order = display order); nothing here
+ * hardcodes the muscle list.
  */
 (function (F) {
   'use strict';
@@ -12,14 +15,20 @@
   const h = (...args) => F.util.h(...args);
   const icon = (name, opts) => (typeof F.icon === 'function' ? F.icon(name, opts) : document.createElement('span'));
 
+  /** Muscles seen in the library, in library order. Only used if program.js failed to load. */
+  function derivedMuscles() {
+    const out = {};
+    const list = F.data && Array.isArray(F.data.exercises) ? F.data.exercises : [];
+    for (const e of list) {
+      const m = e && typeof e.muscle === 'string' ? e.muscle : '';
+      if (m && !Object.prototype.hasOwnProperty.call(out, m)) out[m] = { label: m.charAt(0).toUpperCase() + m.slice(1), plate: null };
+    }
+    return out;
+  }
+
   // Fallbacks keep the picker usable even if program.js failed to load.
   const FALLBACK = {
-    MUSCLES: {
-      chest: { label: 'Chest', plate: 'red' }, back: { label: 'Back', plate: 'blue' },
-      biceps: { label: 'Biceps', plate: 'yellow' }, triceps: { label: 'Triceps', plate: 'green' },
-      shoulders: { label: 'Shoulders', plate: 'orange' }, legs: { label: 'Legs', plate: 'violet' },
-      core: { label: 'Core', plate: 'white' }, fullbody: { label: 'Full body', plate: 'white' }
-    },
+    PATTERNS: {},
     EQUIPMENT: {
       bodyweight: { label: 'Bodyweight', icon: 'body' }, pullupBar: { label: 'Pull-up bar', icon: 'bar' },
       dumbbells: { label: 'Dumbbells', icon: 'dumbbell' }, bench: { label: 'Bench', icon: 'bench' },
@@ -36,21 +45,24 @@
     }
   };
   const program = () => (F.data && F.data.program) || {};
-  const vocab = (key) => program()[key] || FALLBACK[key];
+  const vocab = (key) => program()[key] || (key === 'MUSCLES' ? derivedMuscles() : FALLBACK[key]);
   const has = (obj, key) => !!obj && typeof key === 'string' && Object.prototype.hasOwnProperty.call(obj, key);
 
   const muscleKeys = () => Object.keys(vocab('MUSCLES'));
   const isMuscle = (m) => has(vocab('MUSCLES'), m);
   const muscleLabel = (m) => (isMuscle(m) ? vocab('MUSCLES')[m].label : 'Other');
+  /** Default muscle for new custom exercises: 'fullbody' when it exists, else the last group. */
+  const defaultMuscle = () => (isMuscle('fullbody') ? 'fullbody' : (muscleKeys().slice(-1)[0] || 'fullbody'));
   const equipMeta = (k) => (has(vocab('EQUIPMENT'), k) ? vocab('EQUIPMENT')[k] : { label: String(k || 'Gear'), icon: 'dumbbell' });
   const typeKey = (t) => (has(vocab('TYPES'), t) ? t : 'weight');
   const typeMeta = (t) => vocab('TYPES')[typeKey(t)];
   const levelKey = (l) => (has(vocab('LEVELS'), l) ? l : 'beginner');
   const levelMeta = (l) => vocab('LEVELS')[levelKey(l)];
+  const patternMeta = (p) => (has(vocab('PATTERNS'), p) ? vocab('PATTERNS')[p] : null);
 
   function plateFor(m) {
     try { if (typeof program().plateFor === 'function') return program().plateFor(m); } catch (_) { /* fall through */ }
-    return isMuscle(m) ? vocab('MUSCLES')[m].plate : 'red';
+    return (isMuscle(m) && vocab('MUSCLES')[m].plate) || 'red';
   }
 
   function safeCall(fn, ...args) {
@@ -113,6 +125,7 @@
   const SYNONYMS = {
     db: 'dumbbell', dbs: 'dumbbell', bb: 'barbell', bw: 'bodyweight', kb: 'kettlebell',
     abs: 'core', ab: 'core', lats: 'back', lat: 'back', traps: 'shrug', pecs: 'chest', pec: 'chest',
+    grip: 'forearms', wrists: 'wrist', brachioradialis: 'forearms',
     delts: 'shoulders', delt: 'shoulders', bis: 'biceps', bi: 'biceps', tris: 'triceps', tri: 'triceps',
     glutes: 'legs', glute: 'legs', quads: 'legs', hamstrings: 'legs', hams: 'legs', calves: 'calf',
     cali: 'calisthenics', calis: 'calisthenics', calisthenic: 'calisthenics',
@@ -126,8 +139,9 @@
     });
   }
   function haystack(ex) {
+    const pat = patternMeta(ex.pattern);
     const parts = [ex.name, ex.id, muscleLabel(ex.muscle), ex.muscle, levelMeta(ex.level).label, typeMeta(ex.type).label,
-      ex.type === 'time' ? 'hold timed' : '', ex.calisthenics ? 'calisthenics bodyweight' : '', ex.custom ? 'custom mine' : ''];
+      pat ? pat.label : '', ex.type === 'time' ? 'hold timed' : '', ex.calisthenics ? 'calisthenics bodyweight' : '', ex.custom ? 'custom mine' : ''];
     for (const m of Array.isArray(ex.secondary) ? ex.secondary : []) parts.push(muscleLabel(m));
     for (const k of Array.isArray(ex.equipment) ? ex.equipment : []) parts.push(equipMeta(k).label);
     const spaced = ' ' + norm(parts.join(' ')) + ' ';
@@ -567,9 +581,11 @@
     const fact = (ic, label, value) => h('div.ex-info__fact', null,
       h('dt', null, icon(ic, { size: 18 }), label), h('dd', null, value));
     const equipment = (Array.isArray(ex.equipment) && ex.equipment.length ? ex.equipment : ['bodyweight']);
+    const pat = patternMeta(ex.pattern);
     const facts = h('dl.ex-info__facts', null,
       fact('target', 'Level', h('span.ex-info__level', { dataset: { level: String(lv.rank || 1) } },
         h('span.ex-info__bars', { attrs: { 'aria-hidden': 'true' } }, h('i'), h('i'), h('i')), lv.label)),
+      pat ? fact('bolt', 'Movement', pat.label) : null,
       fact(tp.icon || 'dumbbell', 'Tracking', tp.logs || tp.label),
       fact('bench', 'Equipment', h('span.ex-info__equip', null, equipment.map((k) => {
         const mine = owns(k);
@@ -624,9 +640,10 @@
   };
   const cleanText = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 
-  /** Put a removed custom exercise back (undo). */
+  /** Put a removed custom exercise back (undo). Prefers the store's own action when it exists. */
   function restoreCustom(ex, index) {
     try {
+      if (typeof F.store.restoreCustomExercise === 'function') { F.store.restoreCustomExercise(ex, index); return; }
       F.store.update((s) => {
         if (!Array.isArray(s.customExercises) || s.customExercises.some((e) => e && e.id === ex.id)) return;
         s.customExercises.splice(Math.max(0, Math.min(index, s.customExercises.length)), 0, ex);
@@ -650,7 +667,7 @@
 
     const type0 = typeKey(base.type);
     const draft = {
-      muscle: isMuscle(base.muscle) ? base.muscle : (isMuscle(o.muscle) ? o.muscle : 'fullbody'),
+      muscle: isMuscle(base.muscle) ? base.muscle : (isMuscle(o.muscle) ? o.muscle : defaultMuscle()),
       type: type0,
       equipment: (Array.isArray(base.equipment) ? base.equipment : []).filter((k) => has(vocab('EQUIPMENT'), k)),
       calisthenics: typeof base.calisthenics === 'boolean' ? base.calisthenics : type0 !== 'weight',
@@ -841,6 +858,9 @@
         defaults: { sets: clampInt(draft.sets, 1, 10, 3), target, rest: clampInt(draft.rest, 0, 600, 90) },
         cues
       };
+      // A custom copy keeps the movement pattern of its source so it still finds swaps (when the
+      // store keeps the field); only if the main muscle is unchanged, otherwise it would mislead.
+      if (patternMeta(base.pattern) && base.muscle === draft.muscle) payload.pattern = base.pattern;
       let saved = null;
       try {
         if (editing) {
@@ -892,5 +912,228 @@
     return sheetApi;
   }
 
-  F.picker = { open, info, customForm };
+  /* ================================================================ swap sheet */
+
+  const MAX_ALTS = 8;
+  const levelRank = (ex) => Number(levelMeta(ex && ex.level).rank) || 1;
+  const altsOf = (ex) => (ex && Array.isArray(ex.alts) ? ex.alts : []);
+  const r2list = (a) => (Array.isArray(a) ? a : []);
+  /** exId -> position in the library (custom exercises after it), for stable, progression-friendly ties. */
+  function libraryOrder() {
+    const map = new Map();
+    allExercises().forEach((e, i) => { if (e && typeof e.id === 'string' && !map.has(e.id)) map.set(e.id, i); });
+    return map;
+  }
+
+  /** b is a close swap for a: same movement pattern, or hand-picked in `alts` in either direction. */
+  function isClose(a, b) {
+    if (!a || !b) return false;
+    return (!!a.pattern && a.pattern === b.pattern) || altsOf(a).indexOf(b.id) >= 0 || altsOf(b).indexOf(a.id) >= 0;
+  }
+
+  /**
+   * Local mirror of F.q.alternatives (SPEC 6.4), used only when queries.js doesn't provide it:
+   * exercises you can do, excluding the current one, with the same pattern or linked via alts,
+   * then the same primary muscle; each list sorted close matches first, then beginner -> advanced.
+   */
+  function localAlternatives(cur) {
+    const found = [];
+    allExercises().forEach((e, i) => {
+      if (!e || !e.id || e.id === cur.id || e.missing || !canDo(e)) return;
+      const close = isClose(cur, e);
+      if (!close && e.muscle !== cur.muscle) return;
+      found.push({ e, i, rank: close ? 0 : 1 });
+    });
+    found.sort((a, b) => (a.rank - b.rank) || (levelRank(a.e) - levelRank(b.e)) || (a.i - b.i));
+    const out = { calisthenics: [], weights: [] };
+    for (const x of found) {
+      const list = x.e.calisthenics ? out.calisthenics : out.weights;
+      if (list.length < MAX_ALTS) list.push(x.e);
+    }
+    return out;
+  }
+
+  /**
+   * { calisthenics, weights } for the swap sheet. Candidates come from F.q.alternatives when present
+   * (else the local mirror). The sheet's two sections follow the exercise's `calisthenics` flag, so
+   * a timed dumbbell move (farmer carry) lands under "Dumbbell & bench", not "Calisthenics": the
+   * candidates are merged, sorted close matches -> level -> library order (which runs from
+   * fundamental to advanced, so progressions read in order) and split again by that flag.
+   */
+  function alternativesFor(cur) {
+    let src = null;
+    try {
+      if (F.q && typeof F.q.alternatives === 'function') {
+        const r = F.q.alternatives(cur.id);
+        if (r && Array.isArray(r.calisthenics) && Array.isArray(r.weights)) src = r;
+      }
+    } catch (err) { console.error('[forge/picker]', err); }
+    if (!src) return localAlternatives(cur);
+    const seen = new Set();
+    const merged = [];
+    const order = libraryOrder();
+    r2list(src.calisthenics).concat(r2list(src.weights)).forEach((e, j) => {
+      if (!e || typeof e !== 'object' || typeof e.id !== 'string' || e.id === cur.id || seen.has(e.id)) return;
+      seen.add(e.id);
+      merged.push({ e, i: order.has(e.id) ? order.get(e.id) : order.size + j, rank: isClose(cur, e) ? 0 : 1 });
+    });
+    merged.sort((a, b) => (a.rank - b.rank) || (levelRank(a.e) - levelRank(b.e)) || (a.i - b.i));
+    const out = { calisthenics: [], weights: [] };
+    for (const x of merged) {
+      const list = x.e.calisthenics ? out.calisthenics : out.weights;
+      if (list.length < MAX_ALTS) list.push(x.e);
+    }
+    return out;
+  }
+
+  /** Level read-out: three little bars + label (shared look with the info sheet). */
+  function levelTag(ex, cls) {
+    const lv = levelMeta(ex.level);
+    return h('span', { class: cls, dataset: { level: String(lv.rank || 1) } },
+      h('span.ex-swap__bars', { attrs: { 'aria-hidden': 'true' } }, h('i'), h('i'), h('i')), lv.label);
+  }
+  function typeTag(ex) {
+    const tp = typeMeta(ex.type);
+    return h('span.ex-swap__type', { title: tp.logs || tp.label },
+      icon(tp.icon || 'dumbbell', { size: 14 }), h('span', null, tp.short || tp.label));
+  }
+
+  /**
+   * Swap sheet (SPEC 6.3 / 6.4): the current exercise, then "Calisthenics variations", then
+   * "Dumbbell & bench" alternatives, then "Browse all exercises". Tapping a row picks it at once.
+   * swap(exId, { title = 'Swap exercise', onPick(newExId) })
+   * Private extras: subtitle. Returns the F.ui.sheet api.
+   */
+  function swap(exId, opts) {
+    const o = opts || {};
+    const cur = getExercise(exId);
+    const alt = alternativesFor(cur);
+    const mLabel = muscleLabel(cur.muscle);
+    let sheetApi = null;
+    let done = false;
+
+    function choose(id, rowEl) {
+      if (done || !id) return;
+      done = true;
+      haptic(12);
+      if (rowEl) rowEl.classList.add('is-picked');
+      if (sheetApi) sheetApi.close('pick');
+      if (id !== cur.id) safeCall(o.onPick, id);
+    }
+
+    function browse() {
+      if (done) return;
+      open({
+        multi: false,
+        title: 'Swap for\u2026',
+        subtitle: 'Replacing ' + cur.name,
+        muscle: !cur.missing && isMuscle(cur.muscle) ? cur.muscle : null,
+        onPick: (ids) => { if (Array.isArray(ids) && ids[0]) choose(ids[0], null); }
+      });
+    }
+
+    function showInfo(id) {
+      let infoApi = null;
+      const btn = h('button.btn.btn--primary.btn--lg.btn--block', {
+        type: 'button',
+        on: { click: () => { if (infoApi) infoApi.close('select'); choose(id, null); } }
+      }, icon('repeat'), 'Swap to this');
+      infoApi = info(id, { extra: btn });
+    }
+
+    /* --- the exercise being replaced */
+    const curPat = patternMeta(cur.pattern);
+    const current = h('div.ex-swap__current', { dataset: { plate: plateFor(cur.muscle) } },
+      h('span.ex-swap__disc', { attrs: { 'aria-hidden': 'true' } }, icon(typeMeta(cur.type).icon || 'dumbbell', { size: 22 })),
+      h('span.ex-swap__main', null,
+        h('span.ex-swap__eyebrow', null, 'Swapping out'),
+        h('span.ex-swap__current-name', null, cur.name),
+        h('span.ex-swap__sub', null,
+          h('span', null, cur.missing ? 'No longer in your library' : mLabel + (curPat ? ' \u00b7 ' + curPat.label : '')),
+          cur.missing ? null : equipIcons(cur, 'ex-swap__eq'))),
+      cur.missing ? null : h('button.ex-swap__info', {
+        type: 'button',
+        attrs: { 'aria-label': 'How to do ' + cur.name },
+        on: { click: () => info(cur.id) }
+      }, icon('info', { size: 20 })));
+
+    /* --- alternative rows */
+    let n = 0;
+    function row(ex) {
+      const i = n++;
+      const li = h('li.ex-swap__row', { dataset: { id: ex.id, plate: plateFor(ex.muscle) }, style: { '--i': String(Math.min(i, 14)) } });
+      const pick = h('button.ex-swap__pick', {
+        type: 'button',
+        on: { click: () => choose(ex.id, li) }
+      },
+      F.ui.plateDot(ex.muscle),
+      h('span.ex-swap__main', null,
+        h('span.ex-swap__name', null, ex.name, ex.custom ? h('span.badge.ex-swap__custom', null, 'Custom') : null),
+        h('span.ex-swap__sub', null,
+          levelTag(ex, 'ex-swap__level'),
+          typeTag(ex),
+          equipIcons(ex, 'ex-swap__eq'))),
+      h('span.ex-swap__go', { attrs: { 'aria-hidden': 'true' } }, icon('repeat', { size: 18 })),
+      h('span.sr-only', null, '. Swap in'));
+      const infoBtn = h('button.ex-swap__info', {
+        type: 'button',
+        attrs: { 'aria-label': 'How to do ' + ex.name },
+        on: { click: () => showInfo(ex.id) }
+      }, icon('info', { size: 20 }));
+      li.append(pick, infoBtn);
+      return li;
+    }
+
+    function section(kind, title, iconName, list, noneText) {
+      const headId = 'ex-swap-' + kind + '-' + Math.random().toString(36).slice(2, 7);
+      return h('section.ex-swap__section', { dataset: { kind }, attrs: { 'aria-labelledby': headId } },
+        h('h3.ex-swap__head', { id: headId },
+          h('span.ex-swap__head-ico', { attrs: { 'aria-hidden': 'true' } }, icon(iconName, { size: 18 })),
+          h('span', null, title),
+          h('span.ex-swap__count', { attrs: { 'aria-label': plural(list.length, 'option') } }, String(list.length))),
+        list.length
+          ? h('ul.ex-swap__list', null, list.map(row))
+          : h('p.ex-swap__none', null, noneText));
+    }
+
+    const total = alt.calisthenics.length + alt.weights.length;
+    const browseRow = h('button.ex-swap__browse', { type: 'button', on: { click: browse } },
+      h('span.ex-swap__browse-ico', { attrs: { 'aria-hidden': 'true' } }, icon('search', { size: 20 })),
+      h('span.ex-swap__main', null,
+        h('span.ex-swap__name', null, 'Browse all exercises'),
+        h('span.ex-swap__sub', null, 'Search the whole library, ' + (isMuscle(cur.muscle) ? mLabel.toLowerCase() + ' first' : 'every muscle'))),
+      h('span.ex-swap__go', { attrs: { 'aria-hidden': 'true' } }, icon('chevron-right', { size: 18 })));
+
+    const content = total
+      ? h('div.ex-swap__content', null,
+        current,
+        section('cali', 'Calisthenics variations', 'body', alt.calisthenics,
+          'No bodyweight or bar variation fits this one with your equipment.'),
+        section('weights', 'Dumbbell & bench', 'dumbbell', alt.weights,
+          'No dumbbell or bench alternative for this one. The calisthenics moves above work the same muscles.'),
+        browseRow)
+      : h('div.ex-swap__content', null,
+        current,
+        F.ui.empty({
+          icon: 'repeat',
+          title: cur.missing ? 'Pick a replacement' : 'No close swaps yet',
+          text: cur.missing
+            ? 'This exercise is no longer in your library. Browse every exercise to choose what goes here instead.'
+            : 'Nothing else in your library works ' + (isMuscle(cur.muscle) ? mLabel.toLowerCase() : 'this') +
+              ' with the equipment you have. Browse every exercise, or create your own there.',
+          action: { label: 'Browse all exercises', icon: 'search', onClick: browse }
+        }));
+
+    sheetApi = F.ui.sheet({
+      title: o.title || 'Swap exercise',
+      subtitle: o.subtitle || (total ? 'Same muscles, your equipment. Tap one to swap it in.' : null),
+      content,
+      className: 'ex-swap',
+      onClose: () => { done = true; }
+    });
+    if (sheetApi && sheetApi.el) sheetApi.el.dataset.plate = plateFor(cur.muscle); // tints the sheet's top rim
+    return sheetApi;
+  }
+
+  F.picker = { open, info, customForm, swap };
 })(window.Forge = window.Forge || {});

@@ -242,40 +242,69 @@ export function makeCloud({ uid = 'u_test_1', server = null } = {}) {
 
 /* ------------------------------------------------------------------ data fixture */
 
+// Mirrors the real data shape (SPEC §6.1): every library exercise has a movement `pattern`; some list
+// hand-picked `alts`. The first exercise of each type (pickEx) is db-bench-press / pull-up / plank.
 const FIXTURE_EXERCISES = [
-  { id: 'db-bench-press', name: 'Dumbbell Bench Press', muscle: 'chest', secondary: ['triceps', 'shoulders'], equipment: ['dumbbells', 'bench'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '8-12', rest: 90 }, cues: ['Feet planted'], custom: false },
-  { id: 'db-curl', name: 'Dumbbell Curl', muscle: 'biceps', secondary: [], equipment: ['dumbbells'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '10-12', rest: 60 }, cues: [], custom: false },
-  { id: 'one-arm-db-row', name: 'One-arm Dumbbell Row', muscle: 'back', secondary: ['biceps'], equipment: ['dumbbells', 'bench'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '8-12', rest: 90 }, cues: [], custom: false },
-  { id: 'pull-up', name: 'Pull-up', muscle: 'back', secondary: ['biceps'], equipment: ['pullupBar'], type: 'bodyweight', calisthenics: true, level: 'intermediate', defaults: { sets: 4, target: '5-8', rest: 120 }, cues: [], custom: false },
-  { id: 'push-up', name: 'Push-up', muscle: 'chest', secondary: ['triceps'], equipment: ['bodyweight'], type: 'bodyweight', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: 'AMRAP', rest: 60 }, cues: [], custom: false },
-  { id: 'bench-dip', name: 'Bench Dip', muscle: 'triceps', secondary: [], equipment: ['bench'], type: 'bodyweight', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: '10-15', rest: 60 }, cues: [], custom: false },
-  { id: 'plank', name: 'Plank', muscle: 'core', secondary: [], equipment: ['bodyweight'], type: 'time', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: '30s', rest: 45 }, cues: [], custom: false },
-  { id: 'goblet-squat', name: 'Goblet Squat', muscle: 'legs', secondary: [], equipment: ['dumbbells'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '10-12', rest: 90 }, cues: [], custom: false },
-  { id: 'barbell-back-squat', name: 'Barbell Back Squat', muscle: 'legs', secondary: [], equipment: ['barbell'], type: 'weight', calisthenics: false, level: 'intermediate', defaults: { sets: 5, target: '5', rest: 150 }, cues: [], custom: false }
+  { id: 'db-bench-press', name: 'Dumbbell Bench Press', muscle: 'chest', pattern: 'h-push', secondary: ['triceps', 'shoulders'], equipment: ['dumbbells', 'bench'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '8-12', rest: 90 }, cues: ['Feet planted'], custom: false },
+  { id: 'db-curl', name: 'Dumbbell Curl', muscle: 'biceps', pattern: 'elbow-flex', alts: ['chin-up'], secondary: [], equipment: ['dumbbells'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '10-12', rest: 60 }, cues: [], custom: false },
+  { id: 'one-arm-db-row', name: 'One-arm Dumbbell Row', muscle: 'back', pattern: 'h-pull', secondary: ['biceps'], equipment: ['dumbbells', 'bench'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '8-12', rest: 90 }, cues: [], custom: false },
+  { id: 'pull-up', name: 'Pull-up', muscle: 'back', pattern: 'v-pull', secondary: ['biceps'], equipment: ['pullupBar'], type: 'bodyweight', calisthenics: true, level: 'intermediate', defaults: { sets: 4, target: '5-8', rest: 120 }, cues: [], custom: false },
+  { id: 'push-up', name: 'Push-up', muscle: 'chest', pattern: 'h-push', secondary: ['triceps'], equipment: ['bodyweight'], type: 'bodyweight', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: 'AMRAP', rest: 60 }, cues: [], custom: false },
+  { id: 'bench-dip', name: 'Bench Dip', muscle: 'triceps', pattern: 'elbow-ext', secondary: [], equipment: ['bench'], type: 'bodyweight', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: '10-15', rest: 60 }, cues: [], custom: false },
+  { id: 'plank', name: 'Plank', muscle: 'core', pattern: 'core-stab', secondary: [], equipment: ['bodyweight'], type: 'time', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: '30s', rest: 45 }, cues: [], custom: false },
+  { id: 'goblet-squat', name: 'Goblet Squat', muscle: 'legs', pattern: 'squat', secondary: [], equipment: ['dumbbells'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '10-12', rest: 90 }, cues: [], custom: false },
+  { id: 'barbell-back-squat', name: 'Barbell Back Squat', muscle: 'legs', pattern: 'squat', secondary: [], equipment: ['barbell'], type: 'weight', calisthenics: false, level: 'intermediate', defaults: { sets: 5, target: '5', rest: 150 }, cues: [], custom: false },
+  // appended for swaps / the new split (order above is relied on by pickEx and exercises[0])
+  { id: 'decline-push-up', name: 'Decline Push-up', muscle: 'chest', pattern: 'h-push', secondary: ['shoulders'], equipment: ['bench'], type: 'bodyweight', calisthenics: true, level: 'intermediate', defaults: { sets: 3, target: 'AMRAP', rest: 90 }, cues: [], custom: false },
+  { id: 'archer-push-up', name: 'Archer Push-up', muscle: 'chest', pattern: 'h-push', secondary: ['triceps'], equipment: ['bodyweight'], type: 'bodyweight', calisthenics: true, level: 'advanced', defaults: { sets: 3, target: '5-8', rest: 90 }, cues: [], custom: false },
+  { id: 'incline-db-press', name: 'Incline Dumbbell Press', muscle: 'chest', pattern: 'h-push', secondary: ['shoulders'], equipment: ['dumbbells', 'bench'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 4, target: '8-12', rest: 120 }, cues: [], custom: false },
+  { id: 'db-fly', name: 'Dumbbell Fly', muscle: 'chest', pattern: 'fly', secondary: [], equipment: ['dumbbells', 'bench'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '10-15', rest: 60 }, cues: [], custom: false },
+  { id: 'barbell-bench-press', name: 'Barbell Bench Press', muscle: 'chest', pattern: 'h-push', secondary: [], equipment: ['barbell', 'bench'], type: 'weight', calisthenics: false, level: 'intermediate', defaults: { sets: 5, target: '5', rest: 150 }, cues: [], custom: false },
+  { id: 'chin-up', name: 'Chin-up', muscle: 'biceps', pattern: 'v-pull', secondary: ['back'], equipment: ['pullupBar'], type: 'bodyweight', calisthenics: true, level: 'intermediate', defaults: { sets: 3, target: 'AMRAP', rest: 120 }, cues: [], custom: false },
+  { id: 'db-shoulder-press', name: 'Seated Dumbbell Shoulder Press', muscle: 'shoulders', pattern: 'v-push', secondary: ['triceps'], equipment: ['dumbbells', 'bench'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 4, target: '8-12', rest: 90 }, cues: [], custom: false },
+  { id: 'pike-push-up', name: 'Pike Push-up', muscle: 'shoulders', pattern: 'v-push', secondary: ['triceps'], equipment: ['bodyweight'], type: 'bodyweight', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: '6-10', rest: 90 }, cues: [], custom: false },
+  { id: 'lateral-raise', name: 'Lateral Raise', muscle: 'shoulders', pattern: 'raise', secondary: [], equipment: ['dumbbells'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '12-15', rest: 60 }, cues: [], custom: false },
+  { id: 'db-wrist-curl', name: 'Dumbbell Wrist Curl', muscle: 'forearms', pattern: 'wrist', alts: ['dead-hang'], secondary: [], equipment: ['dumbbells'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '15-20', rest: 45 }, cues: [], custom: false },
+  { id: 'dead-hang', name: 'Dead Hang', muscle: 'forearms', pattern: 'hang', secondary: ['back'], equipment: ['pullupBar'], type: 'time', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: '30s', rest: 60 }, cues: [], custom: false },
+  { id: 'farmers-carry', name: "Farmer's Carry", muscle: 'forearms', pattern: 'carry', secondary: ['core'], equipment: ['dumbbells'], type: 'time', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '40s', rest: 60 }, cues: [], custom: false },
+  { id: 'box-pistol-squat', name: 'Box Pistol Squat', muscle: 'legs', pattern: 'squat', secondary: ['core'], equipment: ['bench'], type: 'bodyweight', calisthenics: true, level: 'intermediate', defaults: { sets: 3, target: '5-8', rest: 90 }, cues: ['Per leg'], custom: false },
+  { id: 'db-rdl', name: 'Dumbbell Romanian Deadlift', muscle: 'legs', pattern: 'hinge', secondary: [], equipment: ['dumbbells'], type: 'weight', calisthenics: false, level: 'beginner', defaults: { sets: 3, target: '8-12', rest: 90 }, cues: [], custom: false },
+  { id: 'hollow-body-hold', name: 'Hollow Body Hold', muscle: 'core', pattern: 'core-stab', secondary: [], equipment: ['bodyweight'], type: 'time', calisthenics: true, level: 'beginner', defaults: { sets: 3, target: '30s', rest: 45 }, cues: [], custom: false }
 ];
+// The user's split (SPEC §6.2): Mon Chest & Biceps · Tue Back & Triceps · Wed Shoulders & Forearms ·
+// Thu Legs · Fri Push · Sat & Sun rest, with calisthenics variations mixed in.
 const FIXTURE_PROGRAM_SRC = `
 (function (F) {
   'use strict';
-  const it = (exId, sets, target, rest) => ({ id: F.util.uid('pi-'), exId, sets, target, rest, note: '' });
+  const it = (exId, sets, target, rest, note) => ({ id: F.util.uid('pi-'), exId, sets, target, rest, note: note || '' });
   F.data = F.data || {};
   F.data.program = {
     MUSCLES: { chest: { label: 'Chest', plate: 'red' }, back: { label: 'Back', plate: 'blue' }, biceps: { label: 'Biceps', plate: 'yellow' },
-      triceps: { label: 'Triceps', plate: 'green' }, shoulders: { label: 'Shoulders', plate: 'orange' }, legs: { label: 'Legs', plate: 'violet' },
-      core: { label: 'Core', plate: 'white' }, fullbody: { label: 'Full body', plate: 'white' } },
-    EQUIPMENT: {},
-    splitInfo: { name: 'Opposing-muscle split', aka: [], summary: '', why: [], howToProgress: [] },
+      triceps: { label: 'Triceps', plate: 'green' }, shoulders: { label: 'Shoulders', plate: 'orange' }, forearms: { label: 'Forearms', plate: 'teal' },
+      legs: { label: 'Legs', plate: 'violet' }, core: { label: 'Core', plate: 'white' }, fullbody: { label: 'Full body', plate: 'white' } },
+    EQUIPMENT: { bodyweight: { label: 'Bodyweight', icon: 'body' }, pullupBar: { label: 'Pull-up bar', icon: 'bar' }, dumbbells: { label: 'Dumbbells', icon: 'dumbbell' },
+      bench: { label: 'Bench', icon: 'bench' }, barbell: { label: 'Barbell', icon: 'plate' }, bands: { label: 'Bands', icon: 'repeat' } },
+    splitInfo: { name: '5-Day Bro Split', aka: [], summary: '', why: [], howToProgress: [] },
     defaultPlan() {
-      const cb = () => ({ title: 'Chest & Biceps', rest: false, focus: ['chest', 'biceps'], items: [it('db-bench-press', 3, '8-12', 90), it('db-curl', 3, '10-12', 60), it('push-up', 3, 'AMRAP', 60)] });
-      const bt = () => ({ title: 'Back & Triceps', rest: false, focus: ['back', 'triceps'], items: [it('pull-up', 4, '5-8', 120), it('one-arm-db-row', 3, '8-12', 90), it('bench-dip', 3, '10-15', 60)] });
+      const rest = () => ({ title: 'Rest Day', rest: true, focus: [], items: [] });
       return { days: {
-        mon: cb(), tue: bt(),
-        wed: { title: 'Calisthenics & Core', rest: false, focus: ['fullbody', 'core'], items: [it('pull-up', 3, '5', 120), it('plank', 3, '30s', 45)] },
-        thu: cb(), fri: bt(),
-        sat: { title: 'Legs & Calisthenics', rest: false, focus: ['legs'], items: [it('goblet-squat', 3, '10-12', 90)] },
-        sun: { title: 'Rest & Recover', rest: true, focus: [], items: [] }
+        mon: { title: 'Chest & Biceps', rest: false, focus: ['chest', 'biceps'], items: [it('db-bench-press', 3, '8-12', 90), it('decline-push-up', 3, 'AMRAP', 90, 'Stop 1-2 reps before form breaks.'), it('chin-up', 3, 'AMRAP', 120), it('db-curl', 3, '10-12', 60)] },
+        tue: { title: 'Back & Triceps', rest: false, focus: ['back', 'triceps'], items: [it('pull-up', 4, '5-8', 120), it('one-arm-db-row', 3, '8-12', 90), it('bench-dip', 3, '10-15', 60), it('dead-hang', 2, '30s', 60)] },
+        wed: { title: 'Shoulders & Forearms', rest: false, focus: ['shoulders', 'forearms'], items: [it('db-shoulder-press', 4, '8-12', 90), it('pike-push-up', 3, '6-10', 90), it('lateral-raise', 3, '12-15', 60), it('db-wrist-curl', 3, '15-20', 45), it('dead-hang', 2, '30s', 60), it('farmers-carry', 3, '40s', 60)] },
+        thu: { title: 'Legs', rest: false, focus: ['legs'], items: [it('goblet-squat', 3, '10-12', 90), it('db-rdl', 3, '8-12', 90), it('box-pistol-squat', 3, '5-8', 90), it('plank', 3, '30s', 45)] },
+        fri: { title: 'Push', rest: false, focus: ['chest', 'shoulders', 'triceps'], items: [it('incline-db-press', 3, '8-12', 90), it('db-shoulder-press', 3, '8-12', 90), it('push-up', 3, 'AMRAP', 60), it('bench-dip', 3, '10-15', 60)] },
+        sat: rest(), sun: rest()
       } };
     },
-    templates: [], quotes: ['Show up.'], quoteFor: () => 'Show up.', plateFor: () => 'red'
+    templates: [
+      { id: 'calisthenics-flow', title: 'Calisthenics Flow', focus: ['fullbody', 'core'], description: 'Light bodyweight session for a rest day.', restDay: true,
+        items: [{ exId: 'push-up', sets: 2, target: 'AMRAP', rest: 60 }, { exId: 'pull-up', sets: 2, target: '5', rest: 90, note: 'Crisp reps.' }, { exId: 'hollow-body-hold', sets: 2, target: '20s', rest: 45 }] },
+      { id: 'quick-pump', title: 'Quick Pump', focus: ['chest', 'back'], description: 'Short dumbbell session.', restDay: false,
+        items: [{ exId: 'db-bench-press', sets: 2, target: '10-12', rest: 60 }, { exId: 'one-arm-db-row', sets: 2, target: '10-12', rest: 60 }] }
+    ],
+    restDayTemplateIds: ['calisthenics-flow'],
+    quotes: ['Show up.'], quoteFor: () => 'Show up.',
+    plateFor(m) { const M = F.data.program.MUSCLES; for (const k of Array.isArray(m) ? m : [m]) if (M[k]) return M[k].plate; return 'red'; }
   };
 })(window.Forge = window.Forge || {});`;
 

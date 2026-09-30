@@ -116,6 +116,42 @@
     return (Array.isArray(e.equipment) ? e.equipment : []).every(owns);
   }
 
+  const LEVEL_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
+  const ALT_MAX = 8;
+  const hasAlt = (a, id) => Array.isArray(a.alts) && a.alts.indexOf(id) >= 0;
+  /**
+   * Swap candidates for exId (SPEC §6.4): exercises the user can do, other than exId, that share its
+   * movement pattern or are linked through `alts` (either direction) — tier 0 — or share its primary
+   * muscle — tier 1. Split into calisthenics (calisthenics flag or non-weight type) and weights; each
+   * sorted tier → level (beginner→advanced) → name, max 8. Custom exercises have no pattern, so they
+   * match by muscle only. Unknown exId → empty lists. Cached per store revision; arrays are copies.
+   */
+  function alternatives(exId) {
+    const empty = { calisthenics: [], weights: [] };
+    if (typeof exId !== 'string' || !exId) return empty;
+    const lists = memo('alt:' + exId, () => {
+      const base = exercise(exId);
+      if (!base || base.missing) return empty;
+      const pattern = typeof base.pattern === 'string' && base.pattern ? base.pattern : null;
+      const ranked = [];
+      for (const ex of allExercises()) {
+        if (!ex || ex.id === exId || !canDo(ex)) continue;
+        const tier = (pattern && ex.pattern === pattern) || hasAlt(base, ex.id) || hasAlt(ex, exId) ? 0
+          : (base.muscle && ex.muscle === base.muscle ? 1 : -1);
+        if (tier >= 0) ranked.push({ ex, tier, level: Object.prototype.hasOwnProperty.call(LEVEL_RANK, ex.level) ? LEVEL_RANK[ex.level] : 1 });
+      }
+      ranked.sort((a, b) => a.tier - b.tier || a.level - b.level ||
+        String(a.ex.name || '').localeCompare(String(b.ex.name || '')) || (a.ex.id < b.ex.id ? -1 : 1));
+      const out = { calisthenics: [], weights: [] };
+      for (const r of ranked) {
+        const list = r.ex.calisthenics || r.ex.type !== 'weight' ? out.calisthenics : out.weights;
+        if (list.length < ALT_MAX) list.push(r.ex);
+      }
+      return out;
+    });
+    return { calisthenics: lists.calisthenics.slice(), weights: lists.weights.slice() };
+  }
+
   /* ---------------------------------------------------------------- plan */
 
   function dayPlan(dayKey) {
@@ -564,7 +600,7 @@
   }
 
   F.q = {
-    exercise, allExercises, owns, canDo,
+    alternatives, exercise, allExercises, owns, canDo,
     dayPlan, planFor, estimateMinutes,
     sessionsOn, sessionsBetween, trainedOn, lastSession, lastPerformance, exerciseHistory,
     bestFor, checkPR, sessionStats, sessionPRs, recentPRs, records, totals,

@@ -51,7 +51,9 @@ test('store.init: defaults and default plan', () => {
   });
   assert.equal(s.meta.createdAt, now());
   assert.ok(s.plan.days.mon.items.length > 0, 'Monday has exercises');
-  assert.equal(s.plan.days.sun.rest, true);
+  // the user's split: Mon–Fri train, Sat & Sun are rest days (details in data.test.mjs)
+  for (const k of ['mon', 'tue', 'wed', 'thu', 'fri']) assert.equal(s.plan.days[k].rest, false, k);
+  for (const k of ['sat', 'sun']) { assert.equal(s.plan.days[k].rest, true, k); assert.equal(s.plan.days[k].items.length, 0, k); }
   // defaults() returns a fresh object each call (plan ids too)
   const a = F.store.defaults(); const b = F.store.defaults();
   assert.notEqual(a, b);

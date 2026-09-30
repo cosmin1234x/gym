@@ -11,7 +11,7 @@
   'use strict';
 
   const U = () => F.util;
-  const MUSCLE_KEYS = ['chest', 'back', 'biceps', 'triceps', 'shoulders', 'legs', 'core', 'fullbody'];
+  const MUSCLE_KEYS = ['chest', 'back', 'biceps', 'triceps', 'shoulders', 'forearms', 'legs', 'core', 'fullbody'];
   const EX_TYPES = ['weight', 'bodyweight', 'time'];
   const LEVELS = ['beginner', 'intermediate', 'advanced'];
   const NOOP = Object.freeze({ noop: true }); // internal: mutator made no change
@@ -506,6 +506,15 @@
     } catch (_) { /* ignore */ }
     return {};
   }
+  /** A known exercise (library or custom) or null — never the 'Deleted exercise' placeholder. */
+  function knownExercise(exId) {
+    if (typeof exId !== 'string' || !exId) return null;
+    try {
+      const ex = F.q && typeof F.q.exercise === 'function' ? F.q.exercise(exId) : null;
+      return ex && !ex.missing ? ex : null;
+    } catch (_) { return null; }
+  }
+  const typeOf = (exId) => { const ex = knownExercise(exId); return ex && EX_TYPES.indexOf(ex.type) >= 0 ? ex.type : 'weight'; };
   const planDay = (k) => (dayKeyOk(k) && state && state.plan && state.plan.days ? state.plan.days[k] : null);
 
   function setDay(dayKey, patch) {
@@ -582,6 +591,34 @@
     });
     mut('plan', () => { assignInPlace(dst, copy); });
   }
+  /**
+   * Swap a plan item's exercise (e.g. DB bench press → decline push-up). Same exercise type: the
+   * item keeps its sets / target / rest / note. Different type (weight ↔ bodyweight ↔ time): the new
+   * exercise's defaults replace sets / target / rest and the old coaching note is cleared (it was
+   * written for the other movement). Returns { item (live), prev (copy, for undo via
+   * updatePlanItem(dayKey, prev.id, prev)) } or null (missing day/item, unknown or same exercise).
+   */
+  function swapPlanItem(dayKey, itemId, newExId) {
+    ensure();
+    const d = planDay(dayKey);
+    const i = d ? findIdx(d.items, itemId) : -1;
+    const ex = knownExercise(newExId);
+    if (i < 0 || !ex || d.items[i].exId === ex.id) return null;
+    const cur = d.items[i];
+    const prev = Object.assign({}, cur);
+    const next = Object.assign({}, cur, { exId: ex.id });
+    if (typeOf(cur.exId) !== typeOf(ex.id)) {
+      const def = isObj(ex.defaults) ? ex.defaults : {};
+      next.sets = def.sets !== undefined ? def.sets : 3;
+      next.target = def.target || (ex.type === 'time' ? '30s' : '8-12');
+      next.rest = def.rest !== undefined ? def.rest : null;
+      next.note = '';
+    }
+    const norm = normPlanItem(next);
+    if (!norm) return null;
+    mut('plan', () => { assignInPlace(cur, norm); });
+    return { item: cur, prev };
+  }
   function resetPlan() {
     ensure();
     const plan = normPlan(sourcePlan());
@@ -609,11 +646,30 @@
     if (!n) return;
     mut('library', (s) => { assignInPlace(s.customExercises[i], n); });
   }
+  /** Returns { exercise, index } (pass both to restoreCustomExercise for undo) or null. */
   function removeCustomExercise(id) {
     ensure();
     const i = findIdx(state.customExercises, id);
-    if (i < 0) return;
+    if (i < 0) return null;
+    const exercise = state.customExercises[i];
     mut('library', (s) => { s.customExercises.splice(i, 1); });
+    return { exercise, index: i };
+  }
+  /**
+   * Undo helper: re-insert a removed custom exercise with its original id (at `index` when given,
+   * else at the end). No-op (null) when that id is already in the library. Returns the exercise.
+   */
+  function restoreCustomExercise(ex, index) {
+    ensure();
+    if (!isObj(ex) || findIdx(state.customExercises, str(ex.id, '').trim()) >= 0) return null;
+    const taken = libraryIds();
+    for (const e of state.customExercises) taken.add(e.id);
+    const n = normCustomExercise(ex, taken);
+    if (!n) return null;
+    const list = state.customExercises;
+    const at = clampN(int(index, list.length), 0, list.length);
+    mut('library', () => { list.splice(at, 0, n); });
+    return n;
   }
 
   /* ---------------------------------------------------------------- workout */
@@ -655,6 +711,37 @@
     return j < 0 ? null : Object.assign(ae, { j, set: ae.entry.sets[j] });
   }
 
+  /** A program template by id, or null. */
+  function templateById(id) {
+    if (typeof id !== 'string' || !id) return null;
+    try {
+      const list = F.data && F.data.program && F.data.program.templates;
+      const t = Array.isArray(list) ? list.find((x) => x && x.id === id) : null;
+      return isObj(t) ? t : null;
+    } catch (_) { return null; }
+  }
+  /** PlanItem-like input ({exId, sets?, target?, rest?, note?}, a SessionExercise, or a bare exId)
+   *  → normalised item; missing fields come from the exercise's defaults. */
+  function itemFrom(raw) {
+    const r = typeof raw === 'string' ? { exId: raw } : raw;
+    if (!isObj(r) || typeof r.exId !== 'string' || !r.exId.trim()) return null;
+    const def = exerciseDefaults(r.exId.trim());
+    return normPlanItem({
+      exId: r.exId,
+      // a SessionExercise (sets = rows) works too, so "repeat this session" can pass session.exercises
+      sets: Array.isArray(r.sets) ? Math.max(1, r.sets.length) : (r.sets !== undefined && r.sets !== null ? r.sets : (def.sets !== undefined ? def.sets : 3)),
+      target: str(r.target, '').trim() || def.target || '8-12',
+      rest: r.rest !== undefined ? r.rest : (def.rest !== undefined ? def.rest : null),
+      note: r.note
+    });
+  }
+
+  /**
+   * Start a workout (returns the existing active one unchanged if there is one).
+   * Source priority: blank → no exercises; else `items` (PlanItem-like array) > `templateId`
+   * (F.data.program.templates; unknown id falls back to the plan) > the `dayKey` plan day (default
+   * today). Title: opts.title, else template title / plan day title.
+   */
   function startWorkout(opts) {
     ensure();
     if (state.active) return state.active;
@@ -663,10 +750,26 @@
     const today = u.todayISO();
     const blank = o.blank === true;
     const key = dayKeyOk(o.dayKey) ? o.dayKey : (blank ? null : u.dayKeyOf(today));
-    const day = key ? state.plan.days[key] : null;
+    const tpl = !blank && !Array.isArray(o.items) ? templateById(o.templateId) : null;
+    let items = [];
+    let fallbackTitle = 'Workout';
+    if (blank) fallbackTitle = 'Quick workout';
+    else if (Array.isArray(o.items)) items = o.items;
+    else if (tpl) {
+      items = Array.isArray(tpl.items) ? tpl.items : [];
+      fallbackTitle = str(tpl.title, '').trim() || 'Workout';
+    } else {
+      const day = key ? state.plan.days[key] : null;
+      items = day ? day.items : [];
+      fallbackTitle = (day && day.title) || (key ? u.DAY_LONG[key] : 'Workout');
+    }
     const exercises = [];
-    if (!blank && day) for (const it of day.items) { const e = makeEntry(it.exId, it.sets, it.target, it.rest, it.note); if (e) exercises.push(e); }
-    const title = str(o.title, '').trim() || (blank ? 'Quick workout' : ((day && day.title) || (key ? u.DAY_LONG[key] : 'Workout')));
+    for (const raw of items) {
+      const it = itemFrom(raw);
+      const e = it ? makeEntry(it.exId, it.sets, it.target, it.rest, it.note) : null;
+      if (e) exercises.push(e);
+    }
+    const title = str(o.title, '').trim() || fallbackTitle;
     const session = normSession({
       id: u.uid('s-'), date: today, dayKey: key, title, startedAt: Date.now(), endedAt: null,
       exercises, note: '', feeling: null, rest: null
@@ -708,6 +811,43 @@
     const to = clampN(int(toIndex, i), 0, a.exercises.length - 1);
     if (to === i) return;
     mut('workout', () => { const [e] = a.exercises.splice(i, 1); a.exercises.splice(to, 0, e); });
+  }
+  /**
+   * Swap the exercise of an active entry, keeping its place and number of set rows (row ids too).
+   * Same type: target / rest / note and DONE sets are kept; undone rows are re-prefilled for the new
+   * exercise (its last performance, else the target) exactly like startWorkout. Different type: the
+   * new exercise's default target / rest apply, the note is cleared and every row is reset to undone
+   * and re-prefilled. A rest timer started from this entry is cleared.
+   * Returns the live entry, or null (missing entry, unknown or same exercise). For undo, snapshot the
+   * entry first (F.util.clone) and restore with removeExerciseFromActive + insertExerciseToActive.
+   */
+  function swapActiveExercise(exEntryId, newExId) {
+    const ae = activeEntry(exEntryId);
+    const ex = knownExercise(newExId);
+    if (!ae || !ex || ae.entry.exId === ex.id) return null;
+    const { a, entry } = ae;
+    const same = typeOf(entry.exId) === typeOf(ex.id);
+    let target = entry.target;
+    let rest = entry.rest;
+    let note = entry.note;
+    if (!same) {
+      const def = isObj(ex.defaults) ? ex.defaults : {};
+      target = def.target || (ex.type === 'time' ? '30s' : '8-12');
+      rest = def.rest !== undefined ? def.rest : null;
+      note = '';
+    }
+    const count = entry.sets.length;
+    const fill = count ? prefillSets(ex.id, count, target) : [];
+    const sets = entry.sets.map((s, i) => (same && s.done
+      ? s
+      : Object.assign({}, fill[i] || fill[fill.length - 1], { id: s.id, done: false, at: null })));
+    const next = normEntry({ id: entry.id, exId: ex.id, target, rest, note, sets });
+    if (!next) return null;
+    mut('workout', () => {
+      assignInPlace(entry, next);
+      if (a.rest && a.rest.exEntryId === exEntryId) a.rest = null;
+    });
+    return entry;
   }
   function addSet(exEntryId) {
     const ae = activeEntry(exEntryId);
@@ -937,9 +1077,9 @@
     /** Validation used by init/replace; exposed for persist/import. Returns a fresh normalised state. */
     normalize,
     setSetting,
-    setDay, addPlanItem, updatePlanItem, removePlanItem, insertPlanItem, movePlanItem, copyDay, resetPlan,
-    addCustomExercise, updateCustomExercise, removeCustomExercise,
-    startWorkout, addExerciseToActive, removeExerciseFromActive, insertExerciseToActive, moveActiveExercise,
+    setDay, addPlanItem, updatePlanItem, removePlanItem, insertPlanItem, movePlanItem, copyDay, swapPlanItem, resetPlan,
+    addCustomExercise, updateCustomExercise, removeCustomExercise, restoreCustomExercise,
+    startWorkout, addExerciseToActive, removeExerciseFromActive, insertExerciseToActive, moveActiveExercise, swapActiveExercise,
     addSet, removeSet, updateSet, toggleSet, setRest, setActiveField, setExerciseNote,
     finishWorkout, discardWorkout, updateSession, deleteSession, restoreSession,
     addWater, removeWater, restoreWater,

@@ -88,10 +88,10 @@
 
   /* ------------------------------------------------------------ plates */
 
-  const PLATES = ['red', 'blue', 'yellow', 'green', 'white', 'orange', 'violet'];
+  const PLATES = ['red', 'blue', 'yellow', 'green', 'white', 'orange', 'violet', 'teal'];
   const MUSCLE_PLATE = {
     chest: 'red', back: 'blue', biceps: 'yellow', triceps: 'green',
-    shoulders: 'orange', legs: 'violet', core: 'white', fullbody: 'white'
+    shoulders: 'orange', forearms: 'teal', legs: 'violet', core: 'white', fullbody: 'white'
   };
 
   /** 'chest' | 'red' | … → plate colour name, or null when unknown. */
@@ -1079,7 +1079,7 @@
   /* ------------------------------------------------------------ confetti */
 
   let confettiState = null;
-  const PLATE_VARS = ['--plate-red', '--plate-blue', '--plate-yellow', '--plate-green', '--plate-white', '--plate-orange', '--plate-violet'];
+  const PLATE_VARS = ['--plate-red', '--plate-blue', '--plate-yellow', '--plate-green', '--plate-white', '--plate-orange', '--plate-violet', '--plate-teal'];
 
   function plateColours() {
     try {
