@@ -2,7 +2,8 @@
 
 FORGE is a mobile-first workout planner + tracker ("stick to the plan" app) for one person training at
 home with a **pull-up bar, dumbbells ("weights") and a flat/incline bench**, who loves **calisthenics**.
-It has a weekly split (Mon = Chest & Biceps, Tue = Back & Triceps, …), live workout logging with a rest
+It has a weekly split (Mon Chest & Biceps · Tue Back & Triceps · Wed Shoulders & Forearms · Thu Legs ·
+Fri Push · Sat/Sun off, with calisthenics variations throughout), live workout logging with a rest
 timer, progress tracking & PRs, a water tracker, and a journal / notes.
 
 This document is the single source of truth every contributor builds against. **Names, file paths,
@@ -157,8 +158,8 @@ literal colours — only tokens (`color-mix()` on tokens is fine).
 | `--accent-soft` | translucent accent tint for backgrounds |
 | `--ok`, `--warn`, `--danger` | semantic states (separate from accent) |
 | `--water`, `--water-2`, `--water-soft` | water tracker |
-| `--plate-red`, `--plate-blue`, `--plate-yellow`, `--plate-green`, `--plate-white`, `--plate-orange`, `--plate-violet` | plate palette |
-| `--m-chest` (red) `--m-back` (blue) `--m-biceps` (yellow) `--m-triceps` (green) `--m-shoulders` (orange) `--m-legs` (violet) `--m-core` (white) `--m-fullbody` (white) | muscle colours (aliases of plates) |
+| `--plate-red`, `--plate-blue`, `--plate-yellow`, `--plate-green`, `--plate-white`, `--plate-orange`, `--plate-violet`, `--plate-teal` | plate palette |
+| `--m-chest` (red) `--m-back` (blue) `--m-biceps` (yellow) `--m-triceps` (green) `--m-shoulders` (orange) `--m-legs` (violet) `--m-forearms` (teal) `--m-core` (white) `--m-fullbody` (white) | muscle colours (aliases of plates) |
 | `--shadow-1`, `--shadow-2`, `--glow` | elevation / accent glow |
 | `--r-xs` 6px, `--r-sm` 10px, `--r-md` 14px, `--r-lg` 20px, `--r-xl` 28px, `--r-pill` 999px | radii |
 | `--font-display`, `--font-stencil`, `--font-body`, `--font-label` | font stacks (with fallbacks: `"Oswald", "Arial Narrow", Impact, system-ui, sans-serif` for display; `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` for body) |
@@ -167,10 +168,10 @@ literal colours — only tokens (`color-mix()` on tokens is fine).
 | `--ease-out` `cubic-bezier(.2,.8,.2,1)`, `--ease-spring` `cubic-bezier(.34,1.56,.64,1)`, `--dur-1` 140ms, `--dur-2` 240ms, `--dur-3` 420ms | motion |
 | `--topbar-h` 56px, `--tabbar-h` 68px, `--sidebar-w` 248px, `--content-max` 760px, `--gutter` 16px | layout |
 
-**Plate helper:** any element with `data-plate="red|blue|yellow|green|white|orange|violet"` gets
+**Plate helper:** any element with `data-plate="red|blue|yellow|green|white|orange|violet|teal"` gets
 `--plate: var(--plate-<colour>)` (defined in tokens.css). Components use `var(--plate, var(--accent))`.
 Muscle → plate mapping (also in `F.data.program.MUSCLES`): chest→red, back→blue, biceps→yellow,
-triceps→green, shoulders→orange, legs→violet, core→white, fullbody→white.
+triceps→green, shoulders→orange, legs→violet, forearms→teal, core→white, fullbody→white.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -311,12 +312,15 @@ F.store = {
   insertPlanItem(dayKey, item, index)                                 // undo helper
   movePlanItem(dayKey, itemId, toIndex)
   copyDay(fromKey, toKey)          // deep copy with fresh ids
+  swapPlanItem(dayKey, itemId, newExId)   // keeps sets/target/rest unless the new exercise type differs (then its defaults)
   resetPlan()                      // back to F.data.program.defaultPlan()
   // custom exercises
   addCustomExercise(ex) -> ex (with id 'custom-…', custom: true)
   updateCustomExercise(id, patch), removeCustomExercise(id)
   // workout
-  startWorkout({ dayKey, title, blank = false } = {}) -> active       // if an active workout exists, returns it unchanged
+  startWorkout({ dayKey, title, blank = false, items, templateId } = {}) -> active   // if an active workout exists, returns it unchanged
+      // items: PlanItem-like [{exId, sets, target, rest}] to build from; templateId: F.data.program.templates id
+      // (title defaults to the template title, dayKey to today's key). Priority: items > templateId > dayKey plan.
       // from plan: one SessionExercise per PlanItem, `sets` rows prefilled from the most recent
       // performance of that exercise (same set index, else its last set); with no history prefill
       // r/t from parseTarget(target) and w = null. date = todayISO(), dayKey defaults to today's key.
@@ -324,6 +328,7 @@ F.store = {
   removeExerciseFromActive(exEntryId) -> { entry, index }
   insertExerciseToActive(entry, index)
   moveActiveExercise(exEntryId, toIndex)
+  swapActiveExercise(exEntryId, newExId)  // replaces exId; keeps the number of sets; undone sets re-prefilled for the new exercise; done sets kept only if same type
   addSet(exEntryId) -> set          // copies the previous set's values, done=false
   removeSet(exEntryId, setId)
   updateSet(exEntryId, setId, patch)   // patch of w/r/t (w in kg)
@@ -362,7 +367,9 @@ missing id are silent no-ops (never throw).
 
 ```js
 { id: 'db-bench-press', name: 'Dumbbell Bench Press',
-  muscle: 'chest',                                  // primary: chest|back|biceps|triceps|shoulders|legs|core|fullbody
+  muscle: 'chest',                                  // primary: chest|back|biceps|triceps|shoulders|forearms|legs|core|fullbody
+  pattern: 'h-push',                                // movement pattern used to find swaps (see §6.4)
+  alts: ['decline-push-up'],                        // optional hand-picked extra swap candidates
   secondary: ['triceps','shoulders'],
   equipment: ['dumbbells','bench'],                 // subset of: bodyweight, pullupBar, dumbbells, bench, barbell, bands
   type: 'weight' | 'bodyweight' | 'time',
@@ -383,37 +390,49 @@ muscle-up negatives, archer variations, planks…). A few barbell moves exist bu
 ```js
 F.data.program = {
   MUSCLES: { chest: { label: 'Chest', plate: 'red' }, back: {…'blue'}, biceps: {…'yellow'}, triceps: {…'green'},
-             shoulders: {…'orange'}, legs: {…'violet'}, core: {…'white'}, fullbody: { label: 'Full body', plate: 'white' } },
+             shoulders: {…'orange'}, forearms: { label: 'Forearms', plate: 'teal' }, legs: {…'violet'}, core: {…'white'},
+             fullbody: { label: 'Full body', plate: 'white' } },
   EQUIPMENT: { bodyweight: { label: 'Bodyweight', icon: 'body' }, pullupBar: { label: 'Pull-up bar', icon: 'bar' },
                dumbbells: { label: 'Dumbbells', icon: 'dumbbell' }, bench: { label: 'Bench', icon: 'bench' },
                barbell: { label: 'Barbell', icon: 'plate' }, bands: { label: 'Bands', icon: 'repeat' } },
   splitInfo: { name, aka: [...], summary, why: [...], howToProgress: [...] },   // explains the user's split (see below)
   defaultPlan() -> { days: {...} }       // fresh ids each call
-  templates: [ { id, title, focus: [...], description, items: [ { exId, sets, target, rest } ] } ],
+  templates: [ { id, title, focus: [...], description, restDay: bool, items: [ { exId, sets, target, rest } ] } ],
+      // restDay: true marks the optional light calisthenics sessions offered on Sat/Sun
+  restDayTemplateIds: ['calisthenics-flow', ...],   // offered on rest days ("Optional: Calisthenics Flow")
   quotes: [ '…' ],                        // 40+ short original gym lines, no attributions
   quoteFor(iso) -> string                 // deterministic per day
   plateFor(muscleOrFocusArray) -> 'red' | …
 };
 ```
 
-**The user's split** ("idk how the split is called"): Chest + Biceps / Back + Triceps pairs a big
-pushing muscle with the small *pulling* arm muscle (and vice-versa), so the arm you train is fresh
-instead of pre-tired. It has no single official name — it is usually called an **"opposing-muscle"
-(antagonist-style) split** or a **"reverse push/pull" split**, and is a variant of the classic
-bodybuilding "bro split". `splitInfo` must explain this plainly.
+**The user's split** (they asked "idk how the split is called"; updated by the user):
+Mon Chest & Biceps · Tue Back & Triceps · Wed Shoulders & Forearms · Thu Legs · Fri Push · Sat & Sun off,
+with calisthenics variations mixed into every day. Equipment: dumbbells, a pull-up bar and a bench.
+* The whole week is a **5-day body-part split** — in gym slang a **"bro split"** (each day focuses on
+  one or two body parts), finished with a **Push day** on Friday (chest, shoulders, triceps) that hits the
+  pushing muscles a second time.
+* The Mon/Tue pairing (Chest + Biceps, Back + Triceps) is an **"opposing-muscle" (antagonist-style)
+  pairing**, sometimes called **"reverse push/pull"**: a big pushing muscle is paired with the small
+  *pulling* arm muscle (and vice-versa), so the arm you train that day is fresh instead of pre-tired by
+  the big lifts.
+`splitInfo` must explain this plainly: `{ name: '5-Day Bro Split', aka: ['Body-part split',
+'Opposing-muscle pairing (Mon/Tue)', 'Reverse push/pull'], summary, why: [...], howToProgress: [...] }`.
 
-Default week (`defaultPlan`):
-* **mon** Chest & Biceps — DB bench press, incline DB press, DB fly, decline (feet-on-bench) push-ups,
-  chin-ups, DB curl, hammer curl, incline DB curl.
-* **tue** Back & Triceps — pull-ups, one-arm DB row, chest-supported/incline DB row or reverse fly,
+Default week (`defaultPlan`) — every training day mixes dumbbell/bench work with calisthenics variations:
+* **mon** Chest & Biceps (focus chest, biceps) — DB bench press, incline DB press, DB fly, decline
+  (feet-on-bench) push-ups, chin-ups, DB curl, hammer curl, incline DB curl.
+* **tue** Back & Triceps (back, triceps) — pull-ups, one-arm DB row, chest-supported incline DB row,
   DB pullover, bench dips, overhead DB triceps extension, DB skull crusher, diamond push-ups.
-* **wed** Calisthenics & Core — scapular pull-ups, pull-ups (or negatives), push-up variation, pike
-  push-ups, hanging knee/leg raises, L-sit (bench/floor), hollow body hold, plank.
-* **thu** Chest & Biceps (B variation — different angles/exercises).
-* **fri** Back & Triceps (B variation).
-* **sat** Legs & Calisthenics — goblet squat, Bulgarian split squat (bench), DB Romanian deadlift,
-  pistol squat progression, jump squats, calf raises, hanging leg raises.
-* **sun** Rest & Recover (`rest: true`, items []).
+* **wed** Shoulders & Forearms (shoulders, forearms) — seated DB shoulder press, pike push-ups (or
+  feet-on-bench pike), lateral raise, DB reverse fly, DB shrug, DB wrist curl, reverse wrist curl,
+  dead hang (grip), farmer's carry (timed).
+* **thu** Legs (legs) — goblet squat, Bulgarian split squat (bench), DB Romanian deadlift, step-ups onto
+  bench, box pistol squat to bench, hip thrust / glute bridge on bench, calf raises, hanging knee/leg raise.
+* **fri** Push (chest, shoulders, triceps) — incline DB press, DB shoulder press or Arnold press,
+  archer or decline push-ups, lateral raise, close-grip DB press, bench dips, DB kickback.
+* **sat** Rest Day (`rest: true`, items []) — Today offers optional calisthenics flows (`restDayTemplateIds`).
+* **sun** Rest Day (`rest: true`, items []).
 
 ### 6.3 Picker (js/core/picker.js → `F.picker`, css/picker.css)
 
@@ -424,8 +443,25 @@ F.picker = {
       // icons, tap to select (check animation), sticky "Add N" button; "Create custom exercise" entry.
   info(exId, { extra: Node } = {})   // sheet with name, muscles, equipment, level, cues, defaults; `extra` appended
   customForm({ exercise = null, onSave(ex) } = {})  // create/edit custom exercise (name, muscle, type, equipment, default sets/target, cues)
+  swap(exId, { title = 'Swap exercise', onPick(newExId) })  // sheet: "Calisthenics variations" section first,
+      // then "Dumbbell & bench" alternatives (from F.q.alternatives), then "Browse all exercises" → open({multi:false})
 };
 ```
+
+### 6.4 Calisthenics variations & swaps
+
+Every library exercise has a `pattern` (movement pattern): `h-push` (horizontal push: presses, push-ups),
+`v-push` (overhead press, pike/handstand push-ups), `h-pull` (rows), `v-pull` (pull-ups, chin-ups,
+pulldowns), `elbow-flex` (curls), `elbow-ext` (triceps extensions, dips, diamond push-ups), `fly`
+(chest fly / pullover), `raise` (lateral/front/rear-delt raises), `shrug`, `wrist` (wrist curls,
+grip holds), `carry`, `squat`, `hinge`, `lunge`, `calf`, `core-flex` (leg raises, V-ups), `core-stab`
+(planks, hollow, L-sit), `hang` (dead hang, active hang), `skill` (muscle-up, skin the cat, handstand),
+`conditioning` (burpees, jumps). `alts` optionally lists extra hand-picked swap ids.
+`F.q.alternatives(exId) -> { calisthenics: Exercise[], weights: Exercise[] }`: exercises the user can do
+(`canDo`), excluding exId, with the same pattern or listed in `alts` (either direction), then same
+primary muscle; each list sorted: same pattern first, then level beginner→advanced; max 8 each.
+Plan and Workout views offer **Swap** on every exercise (uses `F.picker.swap`), so any dumbbell move can
+be turned into a calisthenics variation (and back) in two taps.
 
 ---------------------------------------------------------------------------------------------------
 
@@ -434,6 +470,7 @@ F.picker = {
 Pure reads over `F.store.get()` (never mutate). Must be fast (called during render).
 ```js
 F.q = {
+  alternatives(exId) -> { calisthenics: Exercise[], weights: Exercise[] }   // §6.4
   exercise(id) -> Exercise            // library or custom; unknown → placeholder { id, name: 'Deleted exercise', muscle: 'fullbody', type: 'weight', equipment: [], cues: [], defaults: {...} }
   allExercises() -> Exercise[]        // library + custom
   owns(equipmentKey) -> bool          // 'bodyweight' always true
@@ -672,7 +709,8 @@ Views read state via `F.store.get()` / `F.q`, mutate only via `F.store.*` action
 `ctx.onState`. Page layout: a view header block (`.eyebrow` + `.h1`/`.h-display`), then content in
 `.stack`. Show designed empty states (`F.ui.empty`) that say what will appear and how to add it.
 
-* **today** — date eyebrow; greeting (settings.name); today's split day as a big display title on a plate-
+* **today** — (rest days: calm "Rest Day" hero with recovery tips and an optional "Calisthenics Flow"
+  button per `restDayTemplateIds` → `F.store.startWorkout({ templateId })` → workout) date eyebrow; greeting (settings.name); today's split day as a big display title on a plate-
   coloured hero card with est. minutes & exercise count and the primary CTA (Start / Resume / Done ✓ →
   summary / Rest day → "Train anyway"); welcome card while `!settings.onboarded` (name input, units,
   water goal, explains the split, "Let's go" → onboarded); week strip Mon–Sun with plate markers and
@@ -682,14 +720,16 @@ Views read state via `F.store.get()` / `F.q`, mutate only via `F.store.*` action
   opens journal editor for today); last workout card; quote of the day; collapsible "About your split".
 * **plan** — split name + one-line explainer (link to info sheet); 7-day selector (plate coloured, today
   marked; `params.day`); day editor: title (inline edit), rest-day switch, focus muscle chips; exercise
-  list cards (plate dot, name, sets × target, rest, equipment icons) with edit sheet (sets stepper,
+  list cards (plate dot, name, sets × target, rest, equipment icons, calisthenics badge) with **Swap**
+  (`F.picker.swap` → `F.store.swapPlanItem`), edit sheet (sets stepper,
   target presets 5 / 6-8 / 8-12 / 12-15 / AMRAP / 30s / 45s / 60s + custom, rest stepper, note), move
   up/down, delete with undo toast, info (`F.picker.info`); "Add exercises" (`F.picker.open`); "Load
   template" (program.templates, confirm replace) / "Copy from day"; "Start this workout"; estimated time.
 * **workout** — no active workout: start screen (today's plan hero → Start; other days' plans; "Empty
   workout" (prompt name); repeat a recent session). Active: sticky header (title, live elapsed clock,
   finish button) + a barbell-style progress bar that loads plates as sets complete; exercise cards (plate
-  dot, name, target, "Last: 20 kg × 10 · 10 · 9", info, menu: move/remove/note), set table rows
+  dot, name, target, "Last: 20 kg × 10 · 10 · 9", info, menu: swap (`F.picker.swap` →
+  `F.store.swapActiveExercise`)/move/remove/note), set table rows
   (`#`, previous, kg|+kg, reps | seconds, ✓) with large inputs (`inputmode="decimal"`/`numeric`), check
   → row animates, haptic, rest timer starts, PR → `F.ui.celebrate` / toast; time-type sets have a hold
   stopwatch that fills seconds; add/remove set; add exercise (`F.picker.open`); workout note; finish →
