@@ -234,3 +234,47 @@ html.is-scroll-locked, html.is-scroll-locked body { overflow: hidden; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Shared screen furniture (used by every view) ─────────────────────────── */
+
+/* View header: eyebrow + title on the left, optional actions on the right. */
+.view-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  padding-block: var(--sp-2) var(--sp-1);
+}
+.view-head__titles { display: grid; gap: var(--sp-1); min-width: 0; }
+.view-head__actions { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
+
+/* Floating action button: bottom-right, clear of the tabbar, safe area and rest dock. */
+.fab {
+  position: fixed;
+  z-index: 30;
+  right: max(var(--gutter), env(safe-area-inset-right, 0px));
+  bottom: calc(var(--shell-bottom, 0px) + var(--rest-dock-h, 0px) + var(--sp-4));
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 56px;
+  min-width: 56px;
+  padding-inline: var(--sp-5);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: 800 var(--fs-md) / 1 var(--font-display);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-2), var(--glow);
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+  animation: fg-pop var(--dur-3) var(--ease-spring) both;
+}
+.fab:hover { transform: translateY(-2px); }
+.fab:active { transform: scale(.94); }
+.fab:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
+@media (min-width: 1024px) { .fab { right: var(--sp-7); bottom: var(--sp-7); } }
+@media (prefers-reduced-motion: reduce) { .fab { animation: none; transition: none; } }

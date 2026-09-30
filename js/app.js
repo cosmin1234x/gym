@@ -448,7 +448,14 @@
       setSyncStatus(F.persist.status());
       F.persist.onStatus(setSyncStatus);
     } catch (_) { setSyncStatus('local'); }
-    F.store.subscribe((s) => syncShell(s));
+    F.store.subscribe((s, reason) => {
+      syncShell(s);
+      // Wholesale state swaps (cloud pull, import, reset, another tab) re-render the open screen.
+      const reasons = String(reason || '').split(' ');
+      if (['cloud', 'import', 'storage', 'reset'].some((r) => reasons.includes(r))) {
+        try { F.router.refresh(); } catch (_) { /* router not started yet */ }
+      }
+    });
     syncShell();
     watchScroll();
     watchTyping();
